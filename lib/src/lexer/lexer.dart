@@ -66,6 +66,7 @@ class Lexer {
       "[" => _tokenFromCurrent(TokenType.LeftBracket),
       "}" => _tokenFromCurrent(TokenType.RigthBrace),
       "{" => _tokenFromCurrent(TokenType.LeftBrace),
+      "\$" => _tokenFromCurrent(TokenType.Dollar),
       "\n" => Token(
         type: TokenType.NewLine,
         literal: "\n",
@@ -85,6 +86,7 @@ class Lexer {
           TokenType.RigthBrace ||
           TokenType.LeftBrace ||
           TokenType.NewLine ||
+          TokenType.Dollar ||
           TokenType.Illegal:
         _readChar();
       default:
@@ -103,16 +105,16 @@ class Lexer {
     };
 
     final startCursor = _currentCursor();
-    final start = _position;
 
     _readChar();
+    final start = _position;
     while (String.fromCharCode(char) != readUntil && !_isNewLineOrEOF()) {
       _readChar();
     }
+    final end = _position;
     _readChar(); // consume readUntil char
 
     final endCursor = _currentCursor();
-    final end = _position;
 
     return Token(
       type: type,
@@ -137,10 +139,6 @@ class Lexer {
     } else {
       return false;
     }
-  }
-
-  bool _isNewLine() {
-    return char == 10;
   }
 
   bool _isNewLineOrEOF() {

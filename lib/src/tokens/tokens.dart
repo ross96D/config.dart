@@ -12,6 +12,7 @@ enum TokenType {
   Number,
   StringLiteral,
   InterpolableStringLiteral,
+  Dollar,
   Identifier;
 
   const TokenType();
@@ -80,7 +81,9 @@ class Token {
   final String literal;
   final Position? pos;
 
-  Token({required this.type, required this.literal, this.pos});
+  const Token({required this.type, required this.literal, this.pos});
+
+  factory Token.empty() => Token(literal: "", type: TokenType.Illegal);
 
   @override
   bool operator ==(Object other) {
@@ -110,6 +113,7 @@ class Token {
       TokenType.Illegal => "**ILLEGAL**",
       TokenType.Eof => "**EOF**",
       TokenType.NewLine => "\n",
+      TokenType.Dollar => "\$",
       TokenType.Assign => "=",
       TokenType.LeftBrace => "{",
       TokenType.RigthBrace => "}",

@@ -66,7 +66,7 @@ VAR1=VAR
     test("more complex one", () {
       final input = """
 VAR = "SOMESTRING"
-VAR2 = 12
+\$VAR2 = 12
 key = VAR2
 
 [table]
@@ -77,9 +77,10 @@ key2 = 32
       final tests = [
         Token(type: TokenType.Identifier, literal: "VAR"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.InterpolableStringLiteral, literal: "\"SOMESTRING\""),
+        Token(type: TokenType.InterpolableStringLiteral, literal: "SOMESTRING"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
+        Token(type: TokenType.Dollar, literal: "\$"),
         Token(type: TokenType.Identifier, literal: "VAR2"),
         Token(type: TokenType.Assign, literal: "="),
         Token(type: TokenType.Number, literal: "12"),
@@ -98,7 +99,7 @@ key2 = 32
 
         Token(type: TokenType.Identifier, literal: "key1"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.InterpolableStringLiteral, literal: "\"value\""),
+        Token(type: TokenType.InterpolableStringLiteral, literal: "value"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Identifier, literal: "key2"),
