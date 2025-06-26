@@ -15,14 +15,39 @@ class StringValue extends Value<String> {
 
 class MapValue extends Value<Map<String, Value>> {
   const MapValue(super.value);
+
+  Map<String, Object> toMap() {
+    return value.map(
+      (key, value) => MapEntry(key, switch (value) {
+        MapValue() => value.toMap(),
+        _ => value.value,
+      }),
+    );
+  }
 }
 
 class Evaluator {
   final Program program;
+  List<String> _currentScope;
 
   final Map<String, Value> declarations = {};
 
-  Evaluator(this.program);
+  Evaluator(this.program) : _currentScope = [];
+
+  void _assign(MapValue response, String key, Value value) {
+    MapValue scopeToSet = response;
+    for (final scope in _currentScope) {
+      // if the key does not exists than we create the map
+      if (!response.value.containsKey(scope)) {
+        response.value[scope] = MapValue({});
+      } // if the value is not a MapValue then we rewrite as a MapValue
+      else if (response.value[scope] is! MapValue) {
+        response.value[scope] = MapValue({});
+      }
+      scopeToSet = response.value[scope] as MapValue;
+    }
+    scopeToSet.value[key] = value;
+  }
 
   MapValue eval() {
     final response = MapValue({});
@@ -30,11 +55,13 @@ class Evaluator {
     for (final line in program.lines) {
       switch (line) {
         case AssigmentLine():
-          response.value[line.identifer.value] = _resolveExpr(line.expr);
+          final value = _resolveExpr(line.expr);
+          _assign(response, line.identifer.value, value);
+          declarations[line.identifer.value] = value;
         case DeclarationLine():
           declarations[line.identifer.value] = _resolveExpr(line.expr);
         case TableHeaderLine():
-          throw UnimplementedError();
+          _currentScope = [line.identifer.value];
       }
     }
 
@@ -61,8 +88,9 @@ class Evaluator {
     for (int i = 0; i < codeUnits.length; i++) {
       final char = codeUnits[i];
       if (char == "\$".codeUnitAt(0)) {
-        final start = i+1;
-        while (_isDigit(codeUnits[i]) || _isLetterOr_(codeUnits[i])) {
+        i += 1;
+        final start = i;
+        while (i < codeUnits.length && (_isDigit(codeUnits[i]) || _isLetterOr_(codeUnits[i]))) {
           i += 1;
         }
         final end = i;
@@ -76,13 +104,15 @@ class Evaluator {
 
         final value = declarations[name];
         if (value != null) {
-          resp.write(switch(value) {
+          resp.write(switch (value) {
             NumberValue() => value.value.toString(),
             StringValue() => value.value,
-            MapValue() => "Object", // TODO
+            MapValue() => throw UnimplementedError(),
           });
         }
-        resp.writeCharCode(codeUnits[i]);
+        if (i < codeUnits.length) {
+          resp.writeCharCode(codeUnits[i]);
+        }
       } else {
         resp.writeCharCode(char);
       }
