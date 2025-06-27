@@ -178,7 +178,11 @@ class Lexer {
 
     final startCursor = _currentCursor();
     final start = _position;
-    while (_isDigit()) {
+    bool seePoint = false;
+    while (_isDigit() || (char == 46 && !seePoint)) {
+      if (char == 46) {
+        seePoint = true;
+      }
       _readChar();
     }
     final endCursor = _currentCursor();
