@@ -4,5 +4,7 @@
 library;
 
 export 'src/config_base.dart';
+export 'src/evaluator/evaluator.dart';
+export 'src/parser/parser.dart';
 
 // TODO: Export any libraries intended for clients of this package.

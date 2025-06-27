@@ -22,4 +22,21 @@ class ConfigurationParser {
     );
     return (evaluator.eval(), null);
   }
+
+  static (MapValue?, List<ParseError>?) parseFromString(
+    String content, [
+    Map<String, String> predefinedDeclarations = const {},
+  ]) {
+    final lexer = Lexer(content);
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+    if (parser.errors.isNotEmpty) {
+      return (null, parser.errors);
+    }
+    final evaluator = Evaluator(program);
+    evaluator.declarations.addAll(
+      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v))),
+    );
+    return (evaluator.eval(), null);
+  }
 }
