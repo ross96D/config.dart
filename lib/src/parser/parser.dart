@@ -106,6 +106,7 @@ class Parser {
       if (line != null) {
         response.lines.add(line);
       }
+      _moveToLineEnd(); // just make sure to move to line end
       _nextToken();
     }
     return response;
@@ -127,36 +128,28 @@ class Parser {
         return null;
       case TokenType.Illegal:
         errors.add(IlegalTokenFound(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.Assign:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.LeftBrace:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.RigthBrace:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.Number:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.RigthBracket:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
 
       case TokenType.StringLiteral:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
       case TokenType.InterpolableStringLiteral:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        _moveToLineEnd();
         return null;
 
       case TokenType.Dollar:

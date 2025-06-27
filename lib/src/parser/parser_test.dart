@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 
 void main() {
   test("error", () {
-    final input = "=zzzzzzzzzzzzzzzzzzzzzzz";
+    final input = "VAR = 'ss' VAZ";
 
     final lexer = Lexer(input);
     final parser = Parser(lexer);
