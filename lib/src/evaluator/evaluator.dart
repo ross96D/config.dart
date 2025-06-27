@@ -24,6 +24,14 @@ class MapValue extends Value<Map<String, Value>> {
       }),
     );
   }
+
+  Value? operator [](String key) {
+    return value[key];
+  }
+
+  void operator []=(String key, Value val) {
+    value[key] = val;
+  }
 }
 
 class Evaluator {
