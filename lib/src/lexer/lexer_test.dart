@@ -69,7 +69,8 @@ VAR = "SOMESTRING"
 \$VAR2 = 12
 key = VAR2
 
-[table]
+# comment
+[table] # table comment
 key1 = "value"
 key2 = 32
       """;
@@ -92,9 +93,13 @@ key2 = 32
         Token(type: TokenType.NewLine, literal: "\n"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
+        Token(type: TokenType.Comment, literal: "# comment"),
+        Token(type: TokenType.NewLine, literal: "\n"),
+
         Token(type: TokenType.LeftBracket, literal: "["),
         Token(type: TokenType.Identifier, literal: "table"),
         Token(type: TokenType.RigthBracket, literal: "]"),
+        Token(type: TokenType.Comment, literal: "# table comment"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Identifier, literal: "key1"),

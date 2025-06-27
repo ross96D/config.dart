@@ -12,6 +12,7 @@ enum TokenType {
   Number,
   StringLiteral,
   InterpolableStringLiteral,
+  Comment,
   Dollar,
   Identifier;
 
@@ -121,6 +122,7 @@ class Token {
       TokenType.RigthBracket => "]",
       TokenType.StringLiteral => "'$literal'",
       TokenType.InterpolableStringLiteral => "\"$literal\"",
+      TokenType.Comment => "# $literal",
       TokenType.Identifier => literal,
       TokenType.Number => literal,
     };

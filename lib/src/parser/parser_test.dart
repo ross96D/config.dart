@@ -17,7 +17,6 @@ void main() {
 
     expect(errors.length, equals(1));
     expect(program.lines.length, equals(0));
-    print(errors.join("\n\n"));
   });
 
   test("description", () {
@@ -25,7 +24,7 @@ void main() {
 VAR = 12
 VAR = 12
 \$VAR3 = VAR
-[table]
+[table] # some comment
 VAR = "SOMETHINGS"
     """;
 

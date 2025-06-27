@@ -77,6 +77,7 @@ class Lexer {
       ),
       "\"" => _readString('"'),
       "'" => _readString("'"),
+      "#" => _readComment(),
       _ => _readLiteral(),
     };
     switch (resp.type) {
@@ -92,6 +93,24 @@ class Lexer {
       default:
     }
     return resp;
+  }
+
+  Token _readComment() {
+    assert(String.fromCharCode(char) == "#");
+
+    final startCursor = _currentCursor();
+    final start = _position;
+    while (!_isNewLineOrEOF()) {
+      _readChar();
+    }
+    final end = _position;
+    final endCursor = _currentCursor();
+
+    return Token(
+      type: TokenType.Comment,
+      literal: input.substring(start, end),
+      pos: Position(start: startCursor, end: endCursor),
+    );
   }
 
   Token _readString(String readUntil) {

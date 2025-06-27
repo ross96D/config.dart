@@ -86,6 +86,11 @@ class Parser {
   void _nextToken() {
     _currenToken = _peekToken;
     _peekToken = lexer.nextToken();
+    // ignore comments in the parser
+    if (_peekToken.type == TokenType.Comment) {
+      _peekToken = lexer.nextToken();
+    }
+    assert(_peekToken.type != TokenType.Comment, "two consecutives TokenType.Comment are imposibles");
   }
 
   Program parseProgram() {
@@ -114,6 +119,8 @@ class Parser {
 
   Line? _parseLine() {
     switch (_currenToken.type) {
+      case TokenType.Comment:
+        throw StateError("unreachable");
       case TokenType.Eof:
         throw StateError("unreachable");
       case TokenType.NewLine:
@@ -281,6 +288,9 @@ class Parser {
       // Expression that create Array values
       case TokenType.LeftBracket:
         throw UnimplementedError();
+
+      case TokenType.Comment:
+        throw StateError("Comments are not handled in the parser");
     }
   }
 }
