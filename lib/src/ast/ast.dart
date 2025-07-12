@@ -19,6 +19,20 @@ sealed class Expression extends Node {
   Expression([super.token]);
 }
 
+sealed class _GenericExpression<T extends Object> extends Expression {
+  final T value;
+  _GenericExpression(this.value, [super.token]);
+
+  @override
+  bool operator ==(covariant _GenericExpression<T> other) {
+    return value == other.value;
+  }
+
+  @override
+  int get hashCode => this.value.hashCode;
+
+}
+
 // VAR = <EXPR>
 class AssigmentLine extends Line {
   final Identifier identifer;
@@ -91,18 +105,8 @@ class TableHeaderLine extends Line {
   }
 }
 
-class Identifier extends Expression {
-  final String value;
-
-  Identifier(this.value, [super.token]);
-
-  @override
-  bool operator ==(Object other) {
-    return other is Identifier && value == other.value;
-  }
-
-  @override
-  int get hashCode => value.hashCode;
+class Identifier extends _GenericExpression<String> {
+  Identifier(super.value, [super.token]);
 
   @override
   String toString() {
@@ -110,18 +114,12 @@ class Identifier extends Expression {
   }
 }
 
-class Number extends Expression {
-  final double value;
+class Boolean extends _GenericExpression<bool> {
+  Boolean(super.value, [super.token]);
+}
 
-  Number(this.value, [super.token]);
-
-  @override
-  bool operator ==(Object other) {
-    return other is Number && value == other.value;
-  }
-
-  @override
-  int get hashCode => value.hashCode;
+class Number extends _GenericExpression<double> {
+  Number(super.value, [super.token]);
 
   @override
   String toString() {
@@ -129,19 +127,8 @@ class Number extends Expression {
   }
 }
 
-class StringLiteral extends Expression {
-  final String value;
-
-  StringLiteral(this.value, [super.token]);
-
-  @override
-  bool operator ==(Object other) {
-    return other is StringLiteral && value == other.value;
-  }
-
-  @override
-  int get hashCode => value.hashCode;
-
+class StringLiteral extends _GenericExpression<String> {
+  StringLiteral(super.value, [super.token]);
 
   @override
   String toString() {
@@ -149,18 +136,8 @@ class StringLiteral extends Expression {
   }
 }
 
-class InterpolableStringLiteral extends Expression {
-  final String value;
-
-  InterpolableStringLiteral(this.value, [super.token]);
-
-  @override
-  bool operator ==(Object other) {
-    return other is InterpolableStringLiteral && value == other.value;
-  }
-
-  @override
-  int get hashCode => value.hashCode;
+class InterpolableStringLiteral extends _GenericExpression<String> {
+  InterpolableStringLiteral(super.value, [super.token]);
 
   @override
   String toString() {

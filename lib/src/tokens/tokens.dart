@@ -14,7 +14,9 @@ enum TokenType {
   InterpolableStringLiteral,
   Comment,
   Dollar,
-  Identifier;
+  Identifier,
+  KwTrue,
+  KwFalse;
 
   const TokenType();
 }
@@ -125,6 +127,8 @@ class Token {
       TokenType.Comment => literal,
       TokenType.Identifier => literal,
       TokenType.Number => literal,
+      TokenType.KwTrue => "true",
+      TokenType.KwFalse => "false",
     };
   }
 }

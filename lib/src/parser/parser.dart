@@ -96,7 +96,10 @@ class Parser {
     if (_peekToken.type == TokenType.Comment) {
       _peekToken = lexer.nextToken();
     }
-    assert(_peekToken.type != TokenType.Comment, "two consecutives TokenType.Comment are imposibles");
+    assert(
+      _peekToken.type != TokenType.Comment,
+      "two consecutives TokenType.Comment are imposibles",
+    );
   }
 
   Program parseProgram() {
@@ -148,6 +151,13 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
       case TokenType.RigthBracket:
+        errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
+        return null;
+
+      case TokenType.KwTrue:
+        errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
+        return null;
+      case TokenType.KwFalse:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -279,6 +289,12 @@ class Parser {
 
       case TokenType.InterpolableStringLiteral:
         return InterpolableStringLiteral(_currenToken.literal, _currenToken);
+
+      case TokenType.KwTrue:
+        return Boolean(true, _currenToken);
+
+      case TokenType.KwFalse:
+        return Boolean(false, _currenToken);
 
       // Expresion that create Object values
       case TokenType.LeftBrace:

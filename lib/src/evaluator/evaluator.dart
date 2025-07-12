@@ -13,6 +13,10 @@ class StringValue extends Value<String> {
   const StringValue(super.value);
 }
 
+class BooleanValue extends Value<bool> {
+  const BooleanValue(super.value);
+}
+
 class MapValue extends Value<Map<String, Value>> {
   const MapValue(super.value);
 
@@ -87,6 +91,8 @@ class Evaluator {
         return StringValue(expr.value);
       case InterpolableStringLiteral():
         return StringValue(_resolveInterpolableString(expr.value));
+      case Boolean():
+        return BooleanValue(expr.value);
     }
   }
 
@@ -115,6 +121,7 @@ class Evaluator {
           resp.write(switch (value) {
             NumberValue() => value.value.toString(),
             StringValue() => value.value,
+            BooleanValue() => value.value.toString(),
             MapValue() => throw UnimplementedError(),
           });
         }

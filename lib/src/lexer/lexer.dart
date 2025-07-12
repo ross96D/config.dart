@@ -196,7 +196,6 @@ class Lexer {
 
   Token _readIdentifier() {
     assert(_isLetterOr_(), "identifier must start with a letter or a _");
-    final type = TokenType.Identifier;
 
     final startCursor = _currentCursor();
     final start = _position;
@@ -205,11 +204,20 @@ class Lexer {
     }
     final endCursor = _currentCursor();
     final end = _position;
-    return Token(
-      type: type,
-      literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor),
-    );
+
+    final literal = input.substring(start, end);
+    final position = Position(start: startCursor, end: endCursor);
+    Token? token = checkIfKeyword(literal, position);
+    token ??= Token(type: TokenType.Identifier, literal: literal, pos: position);
+    return token;
+  }
+
+  Token? checkIfKeyword(String literal, [Position? pos]) {
+    return switch (literal) {
+      "true" => Token(literal: literal, type: TokenType.KwTrue, pos: pos),
+      "false" => Token(literal: literal, type: TokenType.KwFalse, pos: pos),
+      _ => null,
+    };
   }
 
   void _skipWhitespaces() {

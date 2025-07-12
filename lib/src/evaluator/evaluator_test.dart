@@ -11,6 +11,8 @@ void main() {
 VAR1 = 'value'
 VAR2 = 12
 \$VAR3 = VAR1
+VAR_BOOL1 = true
+VAR_BOOL2 = false
 
 [table]
 VAR4 = "SOMETHINGS"
@@ -30,6 +32,8 @@ VAR4 = "VAL"
     expect(result.toMap(), equals({
       "VAR1": "value",
       "VAR2": 12,
+      "VAR_BOOL1": true,
+      "VAR_BOOL2": false,
       "table": {
         "VAR4": "SOMETHINGS",
         "VAR5": "SOMETHINGS-value",
