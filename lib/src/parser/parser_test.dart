@@ -19,6 +19,25 @@ void main() {
     expect(program.lines.length, equals(0));
   });
 
+  test("fix panic when comment is at the file start position", () {
+    final input = """
+# comment1
+# comment2
+# comment3
+VAR = 'ss'
+VAR2 = 'ss'
+    """;
+
+    final lexer = Lexer(input);
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: "Errors $errors");
+    expect(program.lines.length, equals(2));
+  });
+
   test("description", () {
     final input = """
 VAR = 12

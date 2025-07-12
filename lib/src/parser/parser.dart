@@ -78,9 +78,20 @@ class Parser {
   late Token _currenToken;
   late Token _peekToken;
 
+  // Parser(this.lexer) {
+  //   _currenToken = lexer.nextToken();
+  //   _peekToken = lexer.nextToken();
+  // }
+
   Parser(this.lexer) {
     _currenToken = lexer.nextToken();
+    while (_currenToken.type == TokenType.Comment) {
+      _currenToken = lexer.nextToken();
+    }
     _peekToken = lexer.nextToken();
+    while (_peekToken.type == TokenType.Comment) {
+      _peekToken = lexer.nextToken();
+    }
   }
 
   void _nextToken() {
