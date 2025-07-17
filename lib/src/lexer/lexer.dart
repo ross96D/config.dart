@@ -1,6 +1,7 @@
 import 'package:config/src/tokens/tokens.dart';
 
 class Lexer {
+  final String filepath;
   final String input;
 
   int _position = 0;
@@ -13,7 +14,7 @@ class Lexer {
   int _lineNumber = 0;
   int _lineStartPosition = 0;
 
-  Lexer(this.input) {
+  Lexer(this.input, [this.filepath = ""]) {
     _readChar();
   }
 
@@ -36,7 +37,7 @@ class Lexer {
       Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition + offset);
 
   Position _getPostion(int offset) {
-    return Position(start: _currentCursor(), end: _currentCursor(1));
+    return Position(start: _currentCursor(), end: _currentCursor(1), filepath: filepath);
   }
 
   Token _tokenFromCurrent(TokenType type) {
@@ -54,6 +55,7 @@ class Lexer {
         pos: Position(
           start: Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition),
           end: Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition),
+          filepath: filepath,
         ),
       );
       _readChar();
@@ -73,6 +75,7 @@ class Lexer {
         pos: Position(
           start: _currentCursor(),
           end: Cursor(lineNumber: _lineNumber + 1, offset: 0),
+          filepath: filepath,
         ),
       ),
       "\"" => _readString('"'),
@@ -109,7 +112,7 @@ class Lexer {
     return Token(
       type: TokenType.Comment,
       literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor),
+      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
     );
   }
 
@@ -138,7 +141,7 @@ class Lexer {
     return Token(
       type: type,
       literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor),
+      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
     );
   }
 
@@ -190,7 +193,7 @@ class Lexer {
     return Token(
       type: type,
       literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor),
+      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
     );
   }
 
@@ -206,7 +209,7 @@ class Lexer {
     final end = _position;
 
     final literal = input.substring(start, end);
-    final position = Position(start: startCursor, end: endCursor);
+    final position = Position(start: startCursor, end: endCursor, filepath: filepath);
     Token? token = checkIfKeyword(literal, position);
     token ??= Token(type: TokenType.Identifier, literal: literal, pos: position);
     return token;

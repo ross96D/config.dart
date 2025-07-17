@@ -3,9 +3,25 @@
 import 'package:config/src/ast/ast.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/parser/parser.dart';
+import 'package:config/src/tokens/tokens.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test("single line", () {
+    final input = "VAR = 'value'";
+
+    final lexer = Lexer(input);
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors, equals([]));
+    expect(program.lines.length, equals(1));
+
+    expect(program.lines[0], equals(AssigmentLine(Identifier("VAR"), StringLiteral("value"))));
+  });
+
   test("error", () {
     final input = "VAR = 'ss' VAZ";
 
@@ -65,6 +81,10 @@ VAR = "SOMETHINGS"
           AssigmentLine(Identifier("VAR"), InterpolableStringLiteral("SOMETHINGS")),
         ]),
       ),
+    );
+    expect(
+      program.lines[3].token.pos,
+      Position(start: Cursor(lineNumber: 3, offset: 1), end: Cursor(lineNumber: 3, offset: 6), filepath: ""),
     );
   });
 }

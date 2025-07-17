@@ -60,8 +60,19 @@ class BadTokenAtLineStart extends ParseError {
 }
 
 class ExpectedToken extends ParseError {
+  static List<TokenType> _filterNull(List<TokenType?> tokens) {
+    List<TokenType> result = [];
+    for (final token in tokens) {
+      if (token != null) {
+        result.add(token);
+      }
+    }
+    return result;
+  }
+
   final List<TokenType> expected;
-  const ExpectedToken(this.expected, super.token, super.input);
+  ExpectedToken(List<TokenType?> expected, super.token, super.input)
+    : expected = _filterNull(expected);
 
   @override
   String _display() {
@@ -179,9 +190,9 @@ class Parser {
     }
   }
 
-  bool _expectPeek(TokenType type) {
-    if (_peekToken.type != type) {
-      errors.add(ExpectedToken([type], _peekToken, lexer.input));
+  bool _expectPeek(TokenType type, [TokenType? typeOr]) {
+    if (_peekToken.type != type && _peekToken.type != typeOr) {
+      errors.add(ExpectedToken([type, typeOr], _peekToken, lexer.input));
       return false;
     }
     _nextToken();
@@ -202,7 +213,7 @@ class Parser {
       return null;
     }
 
-    if (!_expectPeek(TokenType.NewLine)) {
+    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
       return null;
     }
 
@@ -227,7 +238,7 @@ class Parser {
       return null;
     }
 
-    if (!_expectPeek(TokenType.NewLine)) {
+    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
       return null;
     }
 
@@ -236,7 +247,6 @@ class Parser {
 
   TableHeaderLine? _parseTableHeader() {
     assert(_currenToken.type == TokenType.LeftBracket);
-    final firstToken = _currenToken;
 
     if (!_expectPeek(TokenType.Identifier)) {
       return null;
@@ -247,11 +257,10 @@ class Parser {
     if (!_expectPeek(TokenType.RigthBracket)) {
       return null;
     }
-    if (!_expectPeek(TokenType.NewLine)) {
+    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
       return null;
     }
-
-    return TableHeaderLine(identifier, firstToken);
+    return TableHeaderLine(identifier, identifier.token);
   }
 
   Expression? _parseExpression() {

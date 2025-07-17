@@ -42,6 +42,7 @@ void main() {
       final input = """
 VAR = 2
 VAR1=VAR
+[table]
       """;
       final tests = [
         Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(0, 0, 0, 3)),
@@ -54,7 +55,12 @@ VAR1=VAR
         Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(1, 5, 1, 8)),
         Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(1, 8, 2, 0)),
 
-        Token(type: TokenType.Eof, literal: "", pos: Position.t(2, 6)),
+        Token(type: TokenType.LeftBracket, literal: "[", pos: Position.t(2, 0, 2, 1)),
+        Token(type: TokenType.Identifier, literal: "table", pos: Position.t(2, 1, 2, 6)),
+        Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(2, 6, 2, 7)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(2, 7, 3, 0)),
+
+        Token(type: TokenType.Eof, literal: "", pos: Position.t(3, 6)),
       ];
       final lexer = Lexer(input);
       for (final expectedToken in tests) {

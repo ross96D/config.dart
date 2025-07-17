@@ -1,10 +1,9 @@
-
 import 'package:config/src/tokens/tokens.dart';
 
 abstract class Node {
   final Token token;
 
-  Node([Token? token]) : token = Token.empty();
+  Node([Token? token]) : token = token ?? Token.empty();
 
   String tokenLiteral() {
     return token.literal;
@@ -30,7 +29,6 @@ sealed class _GenericExpression<T extends Object> extends Expression {
 
   @override
   int get hashCode => this.value.hashCode;
-
 }
 
 // VAR = <EXPR>
@@ -51,7 +49,6 @@ class AssigmentLine extends Line {
 
   @override
   int get hashCode => Object.hash(identifer, expr);
-
 
   @override
   String toString() {
@@ -97,7 +94,6 @@ class TableHeaderLine extends Line {
 
   @override
   int get hashCode => identifer.hashCode;
-
 
   @override
   String toString() {
@@ -172,7 +168,6 @@ class Program {
 
   @override
   int get hashCode => Object.hashAll(lines);
-
 
   @override
   String toString() {

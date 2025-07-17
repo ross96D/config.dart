@@ -46,7 +46,7 @@ class Position {
   final Cursor start;
   final Cursor end;
 
-  Position({required this.start, required this.end, this.filepath = ""});
+  Position({required this.start, required this.end, required this.filepath});
 
   factory Position.t(
     int startLineNumber,
