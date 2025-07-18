@@ -2,7 +2,7 @@ import 'package:config/src/ast/ast.dart';
 
 class EvaluationResult {
   final MapValue values;
-  final List<EvaluationErrors> errors;
+  final List<EvaluationError> errors;
   const EvaluationResult(this.values, this.errors);
 }
 
@@ -56,12 +56,12 @@ class MapValue extends Value<Map<String, Value>> {
   }
 }
 
-sealed class EvaluationErrors {
-  const EvaluationErrors();
+sealed class EvaluationError {
+  const EvaluationError();
   String error();
 }
 
-class DuplicatedKeyError extends EvaluationErrors {
+class DuplicatedKeyError extends EvaluationError {
   final int lineFirst;
   final int lineSecond;
   final String keyName;
@@ -89,7 +89,7 @@ class DuplicatedKeyError extends EvaluationErrors {
   int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond]);
 }
 
-class TableNameDefinedAsKeyError extends EvaluationErrors {
+class TableNameDefinedAsKeyError extends EvaluationError {
   // TODO final Position tablePosition;
   final int line;
   final String tableName;
@@ -115,7 +115,7 @@ class TableNameDefinedAsKeyError extends EvaluationErrors {
   int get hashCode => Object.hashAll([line, tableName]);
 }
 
-class KeyNotInSchemaError extends EvaluationErrors {
+class KeyNotInSchemaError extends EvaluationError {
   final int line;
   final String keyName;
 
@@ -140,7 +140,7 @@ class KeyNotInSchemaError extends EvaluationErrors {
   int get hashCode => Object.hashAll([line, keyName]);
 }
 
-class ConflictTypeError extends EvaluationErrors {
+class ConflictTypeError extends EvaluationError {
   final int line;
   final String keyName;
   final Type expected;
@@ -170,7 +170,7 @@ class ConflictTypeError extends EvaluationErrors {
   int get hashCode => Object.hashAll([line, keyName, expected, actual]);
 }
 
-class RequiredKeyIsMissing extends EvaluationErrors {
+class RequiredKeyIsMissing extends EvaluationError {
   final String keyName;
   // TODO final List<String> scope;
 
@@ -202,7 +202,7 @@ class Evaluator {
 
   bool _programEvaluated = false;
   late MapValue result;
-  late List<EvaluationErrors> errors;
+  late List<EvaluationError> errors;
 
   final Map<String, Value> declarations = {};
 
@@ -348,7 +348,7 @@ bool _isLetterOr_(int char) {
 
 typedef ValidatorFn<T extends Object> = ValidationError? Function(T value);
 
-abstract class ValidationError extends EvaluationErrors {
+abstract class ValidationError extends EvaluationError {
   const ValidationError();
 }
 
@@ -382,7 +382,7 @@ class TableSchema {
     _tables[tableName] = table;
   }
 
-  void _defaultAndRequired(MapValue result, List<EvaluationErrors> errors) {
+  void _defaultAndRequired(MapValue result, List<EvaluationError> errors) {
     for (final entry in _fields.entries) {
       if (entry.value.defaultTo == null) {
         if (result[entry.key] == null) {
