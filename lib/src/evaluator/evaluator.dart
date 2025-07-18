@@ -70,7 +70,7 @@ class DuplicatedKeyError extends EvaluationError {
 
   @override
   String error() {
-    return "";
+    return toString();
   }
 
   @override
@@ -98,7 +98,7 @@ class TableNameDefinedAsKeyError extends EvaluationError {
 
   @override
   String error() {
-    return "";
+    return toString();
   }
 
   @override
@@ -123,7 +123,7 @@ class KeyNotInSchemaError extends EvaluationError {
 
   @override
   String error() {
-    return "";
+    return toString();
   }
 
   @override
@@ -150,7 +150,7 @@ class ConflictTypeError extends EvaluationError {
 
   @override
   String error() {
-    return "";
+    return toString();
   }
 
   @override
@@ -178,7 +178,7 @@ class RequiredKeyIsMissing extends EvaluationError {
 
   @override
   String error() {
-    return "";
+    return toString();
   }
 
   @override
