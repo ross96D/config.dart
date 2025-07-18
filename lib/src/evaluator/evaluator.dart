@@ -57,6 +57,7 @@ class MapValue extends Value<Map<String, Value>> {
 }
 
 sealed class EvaluationErrors {
+  const EvaluationErrors();
   String error();
 }
 
@@ -347,7 +348,9 @@ bool _isLetterOr_(int char) {
 
 typedef ValidatorFn<T extends Object> = ValidationError? Function(T value);
 
-abstract class ValidationError extends EvaluationErrors {}
+abstract class ValidationError extends EvaluationErrors {
+  const ValidationError();
+}
 
 class _Item<T extends Object> {
   final String name;
