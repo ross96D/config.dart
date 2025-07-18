@@ -23,7 +23,7 @@ VAR4 = "VAL"
 
     """;
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -45,7 +45,7 @@ VAR4 = "VAL"
   test("schema success", () {
     final input = "VAR1 = 'value'";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -63,7 +63,7 @@ VAR4 = "VAL"
   test("schema failed", () {
     final input = "VAR1 = 'not_value'";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -79,7 +79,7 @@ VAR4 = "VAL"
   test("schema default value", () {
     final input = "";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -93,7 +93,7 @@ VAR4 = "VAL"
   test("schema default value", () {
     final input = "";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -111,7 +111,7 @@ TABLE = 12
 [TABLE]
 VAR = 12
     """;
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -120,10 +120,7 @@ VAR = 12
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<TableNameDefinedAsKeyError>());
-    expect(
-      evaluator.errors[0],
-      equals(TableNameDefinedAsKeyError("TABLE", 0)),
-    );
+    expect(evaluator.errors[0], equals(TableNameDefinedAsKeyError("TABLE", 0, "")));
   });
 
   test("duplicated key error", () {
@@ -131,7 +128,7 @@ VAR = 12
 VAR = 12
 VAR = 12
     """;
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -140,16 +137,14 @@ VAR = 12
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<DuplicatedKeyError>());
-    expect(
-      evaluator.errors[0],
-      equals(DuplicatedKeyError("VAR", 0, 1)),
-    );
+    expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+    print(evaluator.errors[0].error());
   });
 
   test("key not in schema", () {
     final input = "VAR = 12";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -158,16 +153,13 @@ VAR = 12
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
-    expect(
-      evaluator.errors[0],
-      equals(KeyNotInSchemaError("VAR", 0)),
-    );
+    expect(evaluator.errors[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
   });
 
   test("type conflict", () {
     final input = "VAR = 12";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -176,16 +168,13 @@ VAR = 12
 
     expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<ConflictTypeError>());
-    expect(
-      evaluator.errors[0],
-      equals(ConflictTypeError("VAR", 0, String, double)),
-    );
+    expect(evaluator.errors[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)));
   });
 
   test("missing required key", () {
     final input = "";
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
@@ -194,10 +183,7 @@ VAR = 12
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
-    expect(
-      evaluator.errors[0],
-      equals(RequiredKeyIsMissing("VAR")),
-    );
+    expect(evaluator.errors[0], equals(RequiredKeyIsMissing("VAR")));
   });
 }
 

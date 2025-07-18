@@ -18,7 +18,7 @@ class ConfigurationParser {
     }
     final evaluator = Evaluator(program);
     evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1))),
+      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
     );
     evaluator.eval();
     return (EvaluationResult(evaluator.result, evaluator.errors), null);
@@ -38,7 +38,7 @@ class ConfigurationParser {
     }
     final evaluator = Evaluator(program, schema);
     evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1))),
+      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
     );
     evaluator.eval();
     return (EvaluationResult(evaluator.result, evaluator.errors), null);

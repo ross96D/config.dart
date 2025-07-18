@@ -9,34 +9,51 @@ class EvaluationResult {
 sealed class Value<T extends Object> {
   final T value;
   final int line;
-  const Value(this.value, this.line);
+  final String filepath;
+  const Value(this.value, this.line, this.filepath);
 
-  Value copyWith({int? line, T? value}) {
+  Value copyWith({int? line, T? value, String? filepath}) {
     return switch (this) {
-      NumberValue v => NumberValue(value as double? ?? v.value, line ?? this.line),
-      StringValue v => StringValue(value as String? ?? v.value, line ?? this.line),
-      BooleanValue v => BooleanValue(value as bool? ?? v.value, line ?? this.line),
-      MapValue v => MapValue(value as Map<String, Value>? ?? v.value, line ?? this.line),
+      NumberValue v => NumberValue(
+        value as double? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      StringValue v => StringValue(
+        value as String? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      BooleanValue v => BooleanValue(
+        value as bool? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      MapValue v => MapValue(
+        value as Map<String, Value>? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
     };
   }
 }
 
 class NumberValue extends Value<double> {
-  const NumberValue(super.value, super.line);
+  const NumberValue(super.value, super.line, super.filepath);
 }
 
 class StringValue extends Value<String> {
-  const StringValue(super.value, super.line);
+  const StringValue(super.value, super.line, super.filepath);
 }
 
 class BooleanValue extends Value<bool> {
-  const BooleanValue(super.value, super.line);
+  const BooleanValue(super.value, super.line, super.filepath);
 }
 
 class MapValue extends Value<Map<String, Value>> {
-  const MapValue(super.value, super.line);
+  const MapValue(super.value, super.line, super.filepath);
 
-  factory MapValue.empty(int line) => MapValue({}, line);
+  factory MapValue.empty([int line = -1, String filepath = ""]) => MapValue({}, line, filepath);
 
   Map<String, Object> toMap() {
     return value.map(
@@ -64,110 +81,129 @@ sealed class EvaluationError {
 class DuplicatedKeyError extends EvaluationError {
   final int lineFirst;
   final int lineSecond;
+  final String filepath;
   final String keyName;
 
-  DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond);
+  DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond, this.filepath);
 
   @override
   String error() {
-    return toString();
+    return """
+Duplicated key $keyName
+first occurrence: $filepath:$lineFirst:0
+second occurrence: $filepath:$lineSecond:0
+""";
   }
 
   @override
   String toString() {
-    return "DuplicatedKeyError(keyName: $keyName, lineFirst: $lineFirst, lineSecond: $lineSecond)";
+    return "DuplicatedKeyError(keyName: $keyName, lineFirst: $lineFirst, lineSecond: $lineSecond, filepath: $filepath)";
   }
 
   @override
   bool operator ==(covariant DuplicatedKeyError other) {
     return lineFirst == other.lineFirst &&
         lineSecond == other.lineSecond &&
+        filepath == other.filepath &&
         keyName == other.keyName;
   }
 
   @override
-  int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond]);
+  int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond, filepath]);
 }
 
 class TableNameDefinedAsKeyError extends EvaluationError {
   // TODO final Position tablePosition;
   final int line;
+  final String filepath;
   final String tableName;
 
-  TableNameDefinedAsKeyError(this.tableName, this.line);
+  TableNameDefinedAsKeyError(this.tableName, this.line, this.filepath);
 
   @override
   String error() {
-    return toString();
+    return """
+A key with the same name as the table is already defined, table $tableName could not be created
+$filepath:$line:0
+""";
   }
 
   @override
   String toString() {
-    return "TableNameDefinedAsKeyError(tableName: $tableName, line: $line)";
+    return "TableNameDefinedAsKeyError(tableName: $tableName, line: $line, filepath: $filepath)";
   }
 
   @override
   bool operator ==(covariant TableNameDefinedAsKeyError other) {
-    return line == other.line && tableName == other.tableName;
+    return line == other.line && tableName == other.tableName && filepath == filepath;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, tableName]);
+  int get hashCode => Object.hashAll([line, tableName, filepath]);
 }
 
 class KeyNotInSchemaError extends EvaluationError {
   final int line;
+  final String filepath;
   final String keyName;
 
-  KeyNotInSchemaError(this.keyName, this.line);
+  KeyNotInSchemaError(this.keyName, this.line, this.filepath);
 
   @override
   String error() {
-    return toString();
+    return """
+  Provided schema does not have key $keyName
+  $filepath:$line:0
+  """;
   }
 
   @override
   String toString() {
-    return "KeyNotInSchemaError(line: $line, keyName: $keyName)";
+    return "KeyNotInSchemaError(line: $line, keyName: $keyName, filepath: $filepath)";
   }
 
   @override
   bool operator ==(covariant KeyNotInSchemaError other) {
-    return line == other.line && keyName == other.keyName;
+    return line == other.line && keyName == other.keyName && filepath == other.filepath;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, keyName]);
+  int get hashCode => Object.hashAll([line, keyName, filepath]);
 }
 
 class ConflictTypeError extends EvaluationError {
   final int line;
+  final String filepath;
   final String keyName;
   final Type expected;
   final Type actual;
 
-  ConflictTypeError(this.keyName, this.line, this.expected, this.actual);
+  ConflictTypeError(this.keyName, this.line, this.filepath, this.expected, this.actual);
 
   @override
   String error() {
-    return toString();
+    return """
+Type Error $keyName expected type is $expected but found $actual
+$filepath:$line
+""";
   }
 
   @override
   String toString() {
-    return "ConflictTypeError(keyName: $keyName, line: $line, expected: $expected, actual: $actual)";
+    return "ConflictTypeError(keyName: $keyName, line: $line,  filepath: $filepath, expected: $expected, actual: $actual)";
   }
 
   @override
   bool operator ==(covariant ConflictTypeError other) {
     return line == other.line &&
         keyName == other.keyName &&
+        filepath == other.filepath &&
         expected == other.expected &&
         actual == other.actual;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, keyName, expected, actual]);
+  int get hashCode => Object.hashAll([line, keyName, expected, actual, filepath]);
 }
 
 class RequiredKeyIsMissing extends EvaluationError {
@@ -178,7 +214,7 @@ class RequiredKeyIsMissing extends EvaluationError {
 
   @override
   String error() {
-    return toString();
+    return "Required key $keyName is missing";
   }
 
   @override
@@ -214,7 +250,7 @@ class Evaluator {
     for (final scope in _currentScope) {
       if (result.value.containsKey(scope)) {
         if (result.value[scope] is! MapValue) {
-          errors.add(TableNameDefinedAsKeyError(scope, result.value[scope]!.line));
+          errors.add(TableNameDefinedAsKeyError(scope, result.value[scope]!.line, value.filepath));
           return false;
         }
       } else {
@@ -222,22 +258,22 @@ class Evaluator {
         // the tableHeader is found. In here we have no way to get the position
         //
         // If we do as above then having !result.value.containsKey(scope) is an invalid state
-        result.value[scope] = MapValue.empty(-1);
+        result.value[scope] = MapValue.empty();
       }
 
       scopeToSet = result.value[scope] as MapValue;
     }
     if (scopeToSet.value.containsKey(key)) {
-      errors.add(DuplicatedKeyError(key, scopeToSet.value[key]!.line, value.line));
+      errors.add(DuplicatedKeyError(key, scopeToSet.value[key]!.line, value.line, value.filepath));
       return false;
     }
     if (schema != null) {
       final error = schema!._validate(key, _currentScope, value);
       switch (error) {
         case _MissingKey():
-          errors.add(KeyNotInSchemaError(key, value.line));
+          errors.add(KeyNotInSchemaError(key, value.line, value.filepath));
         case _TypeError v:
-          errors.add(ConflictTypeError(key, value.line, v.expected, v.actual));
+          errors.add(ConflictTypeError(key, value.line, value.filepath, v.expected, v.actual));
           return false;
         case _ValidationError():
           errors.add(error.error);
@@ -255,7 +291,7 @@ class Evaluator {
     } else {
       _programEvaluated = true;
     }
-    result = MapValue.empty(-1);
+    result = MapValue.empty();
     errors = [];
 
     for (final line in program.lines) {
@@ -283,18 +319,22 @@ class Evaluator {
 
   Value _resolveExpr(Expression expr) {
     final line = expr.token.pos!.start.lineNumber;
+    final filepath = expr.token.pos!.filepath;
     switch (expr) {
       case Identifier():
         // Should we fail here??
-        return (declarations[expr.value] ?? StringValue("", -1)).copyWith(line: line);
+        return (declarations[expr.value] ?? StringValue("", -1, "")).copyWith(
+          line: line,
+          filepath: filepath,
+        );
       case Number():
-        return NumberValue(expr.value, line);
+        return NumberValue(expr.value, line, filepath);
       case StringLiteral():
-        return StringValue(expr.value, line);
+        return StringValue(expr.value, line, filepath);
       case InterpolableStringLiteral():
-        return StringValue(_resolveInterpolableString(expr.value), line);
+        return StringValue(_resolveInterpolableString(expr.value), line, filepath);
       case Boolean():
-        return BooleanValue(expr.value, line);
+        return BooleanValue(expr.value, line, filepath);
     }
   }
 
@@ -394,13 +434,13 @@ class TableSchema {
       if (result[entry.key] == null) {
         switch (entry.value.type) {
           case const (double):
-            result[entry.key] = NumberValue(entry.value.defaultTo as double, -1);
+            result[entry.key] = NumberValue(entry.value.defaultTo as double, -1, "");
 
           case const (String):
-            result[entry.key] = StringValue(entry.value.defaultTo as String, -1);
+            result[entry.key] = StringValue(entry.value.defaultTo as String, -1, "");
 
           case const (bool):
-            result[entry.key] = BooleanValue(entry.value.defaultTo as bool, -1);
+            result[entry.key] = BooleanValue(entry.value.defaultTo as bool, -1, "");
 
           default:
             throw StateError("unreachable");
@@ -410,7 +450,7 @@ class TableSchema {
 
     for (final entry in _tables.entries) {
       if (result[entry.key] == null) {
-        result[entry.key] = MapValue.empty(-1);
+        result[entry.key] = MapValue.empty();
       } else if (result[entry.key] is! MapValue) {
         throw StateError(
           "Unreachable key is not MapValue when is declared as Table in Schema. "
