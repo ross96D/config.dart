@@ -1,26 +1,42 @@
 import 'package:config/src/ast/ast.dart';
 
+class EvaluationResult {
+  final MapValue values;
+  final List<EvaluationErrors> errors;
+  const EvaluationResult(this.values, this.errors);
+}
+
 sealed class Value<T extends Object> {
   final T value;
-  const Value(this.value);
+  final int line;
+  const Value(this.value, this.line);
+
+  Value copyWith({int? line, T? value}) {
+    return switch (this) {
+      NumberValue v => NumberValue(value as double? ?? v.value, line ?? this.line),
+      StringValue v => StringValue(value as String? ?? v.value, line ?? this.line),
+      BooleanValue v => BooleanValue(value as bool? ?? v.value, line ?? this.line),
+      MapValue v => MapValue(value as Map<String, Value>? ?? v.value, line ?? this.line),
+    };
+  }
 }
 
 class NumberValue extends Value<double> {
-  const NumberValue(super.value);
+  const NumberValue(super.value, super.line);
 }
 
 class StringValue extends Value<String> {
-  const StringValue(super.value);
+  const StringValue(super.value, super.line);
 }
 
 class BooleanValue extends Value<bool> {
-  const BooleanValue(super.value);
+  const BooleanValue(super.value, super.line);
 }
 
 class MapValue extends Value<Map<String, Value>> {
-  const MapValue(super.value);
+  const MapValue(super.value, super.line);
 
-  factory MapValue.empty() => MapValue({});
+  factory MapValue.empty(int line) => MapValue({}, line);
 
   Map<String, Object> toMap() {
     return value.map(
@@ -40,17 +56,143 @@ class MapValue extends Value<Map<String, Value>> {
   }
 }
 
-sealed class EvaluationErrors {}
+sealed class EvaluationErrors {
+  String error();
+}
 
-class DuplicatedKeyError extends EvaluationErrors {}
+class DuplicatedKeyError extends EvaluationErrors {
+  final int lineFirst;
+  final int lineSecond;
+  final String keyName;
 
-class TableNameDefinedAsKeyError extends EvaluationErrors {}
+  DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond);
 
-class KeyNotInSchemaError extends EvaluationErrors {}
+  @override
+  String error() {
+    return "";
+  }
 
-class ConflictTypeError extends EvaluationErrors {}
+  @override
+  String toString() {
+    return "DuplicatedKeyError(keyName: $keyName, lineFirst: $lineFirst, lineSecond: $lineSecond)";
+  }
 
-class RequiredKeyIsMissing extends EvaluationErrors {}
+  @override
+  bool operator ==(covariant DuplicatedKeyError other) {
+    return lineFirst == other.lineFirst &&
+        lineSecond == other.lineSecond &&
+        keyName == other.keyName;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond]);
+}
+
+class TableNameDefinedAsKeyError extends EvaluationErrors {
+  // TODO final Position tablePosition;
+  final int line;
+  final String tableName;
+
+  TableNameDefinedAsKeyError(this.tableName, this.line);
+
+  @override
+  String error() {
+    return "";
+  }
+
+  @override
+  String toString() {
+    return "TableNameDefinedAsKeyError(tableName: $tableName, line: $line)";
+  }
+
+  @override
+  bool operator ==(covariant TableNameDefinedAsKeyError other) {
+    return line == other.line && tableName == other.tableName;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([line, tableName]);
+}
+
+class KeyNotInSchemaError extends EvaluationErrors {
+  final int line;
+  final String keyName;
+
+  KeyNotInSchemaError(this.keyName, this.line);
+
+  @override
+  String error() {
+    return "";
+  }
+
+  @override
+  String toString() {
+    return "KeyNotInSchemaError(line: $line, keyName: $keyName)";
+  }
+
+  @override
+  bool operator ==(covariant KeyNotInSchemaError other) {
+    return line == other.line && keyName == other.keyName;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([line, keyName]);
+}
+
+class ConflictTypeError extends EvaluationErrors {
+  final int line;
+  final String keyName;
+  final Type expected;
+  final Type actual;
+
+  ConflictTypeError(this.keyName, this.line, this.expected, this.actual);
+
+  @override
+  String error() {
+    return "";
+  }
+
+  @override
+  String toString() {
+    return "ConflictTypeError(keyName: $keyName, line: $line, expected: $expected, actual: $actual)";
+  }
+
+  @override
+  bool operator ==(covariant ConflictTypeError other) {
+    return line == other.line &&
+        keyName == other.keyName &&
+        expected == other.expected &&
+        actual == other.actual;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([line, keyName, expected, actual]);
+}
+
+class RequiredKeyIsMissing extends EvaluationErrors {
+  final String keyName;
+  // TODO final List<String> scope;
+
+  RequiredKeyIsMissing(this.keyName);
+
+  @override
+  String error() {
+    return "";
+  }
+
+  @override
+  String toString() {
+    return "RequiredKeyIsMissing(keyName: $keyName)";
+  }
+
+  @override
+  bool operator ==(covariant RequiredKeyIsMissing other) {
+    return keyName == other.keyName;
+  }
+
+  @override
+  int get hashCode => keyName.hashCode;
+}
 
 class Evaluator {
   final Program program;
@@ -71,26 +213,30 @@ class Evaluator {
     for (final scope in _currentScope) {
       if (result.value.containsKey(scope)) {
         if (result.value[scope] is! MapValue) {
-          errors.add(TableNameDefinedAsKeyError());
+          errors.add(TableNameDefinedAsKeyError(scope, result.value[scope]!.line));
           return false;
         }
       } else {
-        result.value[scope] = MapValue.empty();
+        // TODO this should not be created here, instead should be created when
+        // the tableHeader is found. In here we have no way to get the position
+        //
+        // If we do as above then having !result.value.containsKey(scope) is an invalid state
+        result.value[scope] = MapValue.empty(-1);
       }
 
       scopeToSet = result.value[scope] as MapValue;
     }
     if (scopeToSet.value.containsKey(key)) {
-      errors.add(DuplicatedKeyError());
+      errors.add(DuplicatedKeyError(key, scopeToSet.value[key]!.line, value.line));
       return false;
     }
     if (schema != null) {
       final error = schema!._validate(key, _currentScope, value);
       switch (error) {
         case _MissingKey():
-          errors.add(KeyNotInSchemaError());
-        case _TypeError():
-          errors.add(ConflictTypeError());
+          errors.add(KeyNotInSchemaError(key, value.line));
+        case _TypeError v:
+          errors.add(ConflictTypeError(key, value.line, v.expected, v.actual));
           return false;
         case _ValidationError():
           errors.add(error.error);
@@ -108,7 +254,7 @@ class Evaluator {
     } else {
       _programEvaluated = true;
     }
-    result = MapValue.empty();
+    result = MapValue.empty(-1);
     errors = [];
 
     for (final line in program.lines) {
@@ -135,18 +281,19 @@ class Evaluator {
   }
 
   Value _resolveExpr(Expression expr) {
+    final line = expr.token.pos!.start.lineNumber;
     switch (expr) {
       case Identifier():
         // Should we fail here??
-        return declarations[expr.value] ?? StringValue("");
+        return (declarations[expr.value] ?? StringValue("", -1)).copyWith(line: line);
       case Number():
-        return NumberValue(expr.value);
+        return NumberValue(expr.value, line);
       case StringLiteral():
-        return StringValue(expr.value);
+        return StringValue(expr.value, line);
       case InterpolableStringLiteral():
-        return StringValue(_resolveInterpolableString(expr.value));
+        return StringValue(_resolveInterpolableString(expr.value), line);
       case Boolean():
-        return BooleanValue(expr.value);
+        return BooleanValue(expr.value, line);
     }
   }
 
@@ -236,7 +383,7 @@ class TableSchema {
     for (final entry in _fields.entries) {
       if (entry.value.defaultTo == null) {
         if (result[entry.key] == null) {
-          errors.add(RequiredKeyIsMissing());
+          errors.add(RequiredKeyIsMissing(entry.key));
         }
         continue;
       }
@@ -244,13 +391,13 @@ class TableSchema {
       if (result[entry.key] == null) {
         switch (entry.value.type) {
           case const (double):
-            result[entry.key] = NumberValue(entry.value.defaultTo as double);
+            result[entry.key] = NumberValue(entry.value.defaultTo as double, -1);
 
           case const (String):
-            result[entry.key] = StringValue(entry.value.defaultTo as String);
+            result[entry.key] = StringValue(entry.value.defaultTo as String, -1);
 
           case const (bool):
-            result[entry.key] = BooleanValue(entry.value.defaultTo as bool);
+            result[entry.key] = BooleanValue(entry.value.defaultTo as bool, -1);
 
           default:
             throw StateError("unreachable");
@@ -260,7 +407,7 @@ class TableSchema {
 
     for (final entry in _tables.entries) {
       if (result[entry.key] == null) {
-        result[entry.key] = MapValue.empty();
+        result[entry.key] = MapValue.empty(-1);
       } else if (result[entry.key] is! MapValue) {
         throw StateError(
           "Unreachable key is not MapValue when is declared as Table in Schema. "
@@ -281,7 +428,10 @@ class _MissingKey extends _SchemaValidationResult {
 }
 
 class _TypeError extends _SchemaValidationResult {
-  const _TypeError();
+  final Type expected;
+  final Type actual;
+
+  const _TypeError(this.actual, this.expected);
 }
 
 class _ValidationError extends _SchemaValidationResult {
@@ -311,7 +461,7 @@ class Schema extends TableSchema {
     switch (value) {
       case NumberValue():
         if (field.type != double) {
-          return _TypeError();
+          return _TypeError(double, field.type);
         }
         final error = field.validator(value.value);
         if (error != null) {
@@ -320,7 +470,7 @@ class Schema extends TableSchema {
 
       case StringValue():
         if (field.type != String) {
-          return _TypeError();
+          return _TypeError(String, field.type);
         }
         final error = field.validator(value.value);
         if (error != null) {
@@ -328,7 +478,7 @@ class Schema extends TableSchema {
         }
       case BooleanValue():
         if (field.type != bool) {
-          return _TypeError();
+          return _TypeError(bool, field.type);
         }
         final error = field.validator(value.value);
         if (error != null) {

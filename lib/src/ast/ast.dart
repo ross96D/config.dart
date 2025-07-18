@@ -143,8 +143,9 @@ class InterpolableStringLiteral extends _GenericExpression<String> {
 
 class Program {
   final List<Line> lines;
+  final String filepath;
 
-  Program([List<Line>? lines]) : lines = lines ?? [];
+  Program(this.filepath, [List<Line>? lines]) : lines = lines ?? [];
 
   String tokenLiteral() {
     return lines.map((e) => e.tokenLiteral()).join("\n");

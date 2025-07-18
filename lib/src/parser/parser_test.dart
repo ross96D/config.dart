@@ -63,7 +63,7 @@ VAR = 12
 VAR = "SOMETHINGS"
     """;
 
-    final lexer = Lexer(input);
+    final lexer = Lexer(input, "path/to/file");
     final parser = Parser(lexer);
 
     final program = parser.parseProgram();
@@ -73,7 +73,7 @@ VAR = "SOMETHINGS"
     expect(
       program,
       equals(
-        Program([
+        Program("path/to/file", [
           AssigmentLine(Identifier("VAR"), Number(12)),
           AssigmentLine(Identifier("VAR"), Number(12)),
           DeclarationLine(Identifier("VAR3"), Identifier("VAR")),
@@ -84,7 +84,11 @@ VAR = "SOMETHINGS"
     );
     expect(
       program.lines[3].token.pos,
-      Position(start: Cursor(lineNumber: 3, offset: 1), end: Cursor(lineNumber: 3, offset: 6), filepath: ""),
+      Position(
+        start: Cursor(lineNumber: 3, offset: 1),
+        end: Cursor(lineNumber: 3, offset: 6),
+        filepath: "path/to/file",
+      ),
     );
   });
 }

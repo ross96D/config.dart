@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:config/src/evaluator/evaluator.dart';
+import 'package:config/config.dart';
 import 'package:config/src/lexer/lexer.dart';
-import 'package:config/src/parser/parser.dart';
 
 class ConfigurationParser {
-  static (MapValue?, List<ParseError>?) parseFromFile(
+  static (EvaluationResult?, List<ParseError>?) parseFromFile(
     File file, {
     Schema? schema,
     Map<String, String> predefinedDeclarations = const {},
@@ -19,12 +18,13 @@ class ConfigurationParser {
     }
     final evaluator = Evaluator(program);
     evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v))),
+      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1))),
     );
-    return (evaluator.eval(), null);
+    evaluator.eval();
+    return (EvaluationResult(evaluator.result, evaluator.errors), null);
   }
 
-  static (MapValue?, List<ParseError>?) parseFromString(
+  static (EvaluationResult?, List<ParseError>?) parseFromString(
     String content, {
     Map<String, String> predefinedDeclarations = const {},
     String filepath = "",
@@ -38,8 +38,9 @@ class ConfigurationParser {
     }
     final evaluator = Evaluator(program, schema);
     evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v))),
+      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1))),
     );
-    return (evaluator.eval(), null);
+    evaluator.eval();
+    return (EvaluationResult(evaluator.result, evaluator.errors), null);
   }
 }

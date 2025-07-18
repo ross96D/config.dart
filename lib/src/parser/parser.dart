@@ -83,13 +83,14 @@ class ExpectedToken extends ParseError {
 class Parser {
   final Lexer lexer;
   final List<ParseError> errors = [];
+  final String filepath;
 
   bool _alreadyParsed = false;
 
   late Token _currenToken;
   late Token _peekToken;
 
-  Parser(this.lexer) {
+  Parser(this.lexer) : filepath = lexer.filepath {
     _currenToken = lexer.nextToken();
     while (_currenToken.type == TokenType.Comment) {
       _currenToken = lexer.nextToken();
@@ -120,7 +121,7 @@ class Parser {
       return resp;
     }(), "can only call parseProgram once");
 
-    final response = Program();
+    final response = Program(filepath);
     while (_currenToken.type != TokenType.Eof) {
       final line = _parseLine();
       if (line != null) {

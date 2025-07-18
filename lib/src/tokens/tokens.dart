@@ -48,6 +48,12 @@ class Position {
 
   Position({required this.start, required this.end, required this.filepath});
 
+  factory Position.start(String filepath) => Position(
+    start: Cursor(lineNumber: 0, offset: 0),
+    end: Cursor(lineNumber: 0, offset: 0),
+    filepath: filepath,
+  );
+
   factory Position.t(
     int startLineNumber,
     int startOffset, [
@@ -68,11 +74,8 @@ class Position {
   }
 
   @override
-  bool operator ==(Object other) {
-    return other is Position &&
-        filepath == other.filepath &&
-        start == other.start &&
-        end == other.end;
+  bool operator ==(covariant Position other) {
+    return filepath == other.filepath && start == other.start && end == other.end;
   }
 
   @override
