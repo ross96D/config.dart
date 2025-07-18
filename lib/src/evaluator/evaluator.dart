@@ -90,8 +90,8 @@ class DuplicatedKeyError extends EvaluationError {
   String error() {
     return """
 Duplicated key $keyName
-first occurrence: $filepath:$lineFirst:0
-second occurrence: $filepath:$lineSecond:0
+first occurrence: $filepath:${lineFirst + 1}:0
+second occurrence: $filepath:${lineSecond + 1}:0
 """;
   }
 
@@ -124,7 +124,7 @@ class TableNameDefinedAsKeyError extends EvaluationError {
   String error() {
     return """
 A key with the same name as the table is already defined, table $tableName could not be created
-$filepath:$line:0
+$filepath:${line + 1}:0
 """;
   }
 
@@ -153,7 +153,7 @@ class KeyNotInSchemaError extends EvaluationError {
   String error() {
     return """
   Provided schema does not have key $keyName
-  $filepath:$line:0
+  $filepath:${line + 1}:0
   """;
   }
 
@@ -184,7 +184,7 @@ class ConflictTypeError extends EvaluationError {
   String error() {
     return """
 Type Error $keyName expected type is $expected but found $actual
-$filepath:$line
+$filepath:${line + 1}:0
 """;
   }
 
