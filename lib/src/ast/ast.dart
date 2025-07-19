@@ -141,6 +141,47 @@ class InterpolableStringLiteral extends _GenericExpression<String> {
   }
 }
 
+class PrefixExpression extends Expression {
+  final Operator op;
+  final Expression expr;
+
+  PrefixExpression(this.op, this.expr, [super.token]);
+
+  @override
+  String toString() {
+    return '($op$expr)';
+  }
+
+  @override
+  bool operator ==(covariant PrefixExpression other) {
+    return op == other.op && expr == other.expr;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, expr]);
+}
+
+class InfixExpression extends Expression {
+  final Expression left;
+  final Expression right;
+  final Operator op;
+
+  InfixExpression(this.left, this.op, this.right, [super.token]);
+
+  @override
+  String toString() {
+    return '($left $op $right)';
+  }
+
+  @override
+  bool operator ==(covariant InfixExpression other) {
+    return left == other.left && op == other.op && right == other.right;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([left, op, right]);
+}
+
 class Program {
   final List<Line> lines;
   final String filepath;

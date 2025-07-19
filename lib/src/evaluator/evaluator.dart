@@ -335,6 +335,15 @@ class Evaluator {
         return StringValue(_resolveInterpolableString(expr.value), line, filepath);
       case Boolean():
         return BooleanValue(expr.value, line, filepath);
+
+
+
+      case PrefixExpression():
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case InfixExpression():
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 

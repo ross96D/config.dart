@@ -68,7 +68,6 @@ class Lexer {
     }
 
     final resp = switch (String.fromCharCode(char)) {
-      "=" => _tokenFromCurrent(TokenType.Assign),
       "]" => _tokenFromCurrent(TokenType.RigthBracket),
       "[" => _tokenFromCurrent(TokenType.LeftBracket),
       "}" => _tokenFromCurrent(TokenType.RigthBrace),
@@ -76,11 +75,13 @@ class Lexer {
       "\$" => _tokenFromCurrent(TokenType.Dollar),
       "*" => _tokenFromCurrent(TokenType.Mult),
       "\\" => _tokenFromCurrent(TokenType.Div),
-      "+" => _tokenFromCurrent(TokenType.Add),
-      "-" => _tokenFromCurrent(TokenType.Sub),
+      "+" => _tokenFromCurrent(TokenType.Plus),
+      "-" => _tokenFromCurrent(TokenType.Minus),
       "(" => _tokenFromCurrent(TokenType.LeftParent),
       ")" => _tokenFromCurrent(TokenType.RigthParent),
+      "!" => _tokenFromCurrent(TokenType.Bang),
       "\n" => _newLine(),
+      "=" => _readEqual(),
       ">" => _readGreatThan(),
       "<" => _readLessThan(),
       "\"" => _readString('"'),
@@ -109,6 +110,17 @@ class Lexer {
     final resp = Token(type: TokenType.Illegal, literal: String.fromCharCode(char), pos: _getPostion(1));
     _readChar();
     return resp;
+  }
+
+  Token _readEqual() {
+    if (String.fromCharCode(nexChar) == "=") {
+      final resp = Token(literal: ">=", type: TokenType.Equals, pos: _getPostion(2));
+      _readChar();
+      _readChar();
+      return resp;
+    } else {
+      return _tokenFromCurrent(TokenType.Assign);
+    }
   }
 
   Token _readGreatThan() {

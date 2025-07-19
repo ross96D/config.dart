@@ -71,8 +71,13 @@ class ExpectedToken extends ParseError {
   }
 
   final List<TokenType> expected;
-  ExpectedToken(List<TokenType?> expected, super.token, super.input)
+
+  ExpectedToken(List<TokenType> expected, super.token, super.input)
     : expected = _filterNull(expected);
+
+  factory ExpectedToken.withNulls(List<TokenType?> expected, Token token, String input) {
+    return ExpectedToken(_filterNull(expected), token, input);
+  }
 
   @override
   String _display() {
@@ -158,10 +163,10 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.GreatThan || TokenType.GreatOrEqThan:
+      case TokenType.GreatThan || TokenType.GreatOrEqThan || TokenType.Bang:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
-      case TokenType.LessThan || TokenType.LessOrEqThan:
+      case TokenType.LessThan || TokenType.LessOrEqThan || TokenType.Equals || TokenType.NotEquals:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -181,7 +186,7 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.Mult || TokenType.Div || TokenType.Add || TokenType.Sub:
+      case TokenType.Mult || TokenType.Div || TokenType.Plus || TokenType.Minus:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -198,11 +203,19 @@ class Parser {
 
   bool _expectPeek(TokenType type, [TokenType? typeOr]) {
     if (_peekToken.type != type && _peekToken.type != typeOr) {
-      errors.add(ExpectedToken([type, typeOr], _peekToken, lexer.input));
+      errors.add(ExpectedToken.withNulls([type, typeOr], _peekToken, lexer.input));
       return false;
     }
     _nextToken();
     return true;
+  }
+
+  _Precedence _peekPrecedence() {
+    return _precedences[_peekToken.type] ?? _Precedence.lowest;
+  }
+
+  _Precedence _currentPrecedence() {
+    return _precedences[_currenToken.type] ?? _Precedence.lowest;
   }
 
   AssigmentLine? _parseAssignment() {
@@ -214,7 +227,7 @@ class Parser {
     }
     _nextToken();
 
-    final expression = _parseExpression();
+    final expression = _parseExpression(_Precedence.lowest);
     if (expression == null) {
       return null;
     }
@@ -239,7 +252,7 @@ class Parser {
     }
     _nextToken();
 
-    final expression = _parseExpression();
+    final expression = _parseExpression(_Precedence.lowest);
     if (expression == null) {
       return null;
     }
@@ -269,91 +282,138 @@ class Parser {
     return TableHeaderLine(identifier, identifier.token);
   }
 
-  Expression? _parseExpression() {
-    switch (_currenToken.type) {
-      case TokenType.Illegal ||
-          TokenType.Eof ||
-          TokenType.NewLine ||
-          TokenType.Assign ||
-          TokenType.RigthBrace ||
-          TokenType.RigthBracket ||
-          TokenType.Dollar:
-        errors.add(
-          ExpectedToken(
-            [
-              TokenType.Identifier,
-              TokenType.RigthBrace,
-              TokenType.LeftBracket,
-              TokenType.Number,
-              TokenType.StringLiteral,
-              TokenType.InterpolableStringLiteral,
-            ],
-            _currenToken,
-            lexer.input,
-          ),
-        );
-        return null;
-      case TokenType.Identifier:
-        return Identifier(_currenToken.literal, _currenToken);
-
-      case TokenType.Number:
-        return Number(double.parse(_currenToken.literal), _currenToken);
-
-      case TokenType.StringLiteral:
-        return StringLiteral(_currenToken.literal, _currenToken);
-
-      case TokenType.InterpolableStringLiteral:
-        return InterpolableStringLiteral(_currenToken.literal, _currenToken);
-
-      case TokenType.KwTrue:
-        return Boolean(true, _currenToken);
-
-      case TokenType.KwFalse:
-        return Boolean(false, _currenToken);
-
-      // Expresion that create Object values
-      case TokenType.LeftBrace:
-        throw UnimplementedError();
-
-      // Expression that create Array values
-      case TokenType.LeftBracket:
-        throw UnimplementedError();
-
-      case TokenType.Comment:
-        throw StateError("Comments are not handled in the parser");
-
-
-
-      case TokenType.LeftParent:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.RigthParent:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.Mult:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.Div:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.Add:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.Sub:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.GreatThan:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.GreatOrEqThan:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.LessThan:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case TokenType.LessOrEqThan:
-        // TODO: Handle this case.
-        throw UnimplementedError();
+  Expression? _parseExpression(_Precedence precedence) {
+    final prefix = _prefixParseFn[_currenToken.type];
+    if (prefix == null) {
+      errors.add(
+        ExpectedToken(_prefixParseFn.keys.toList(growable: false), _currenToken, lexer.input),
+      );
+      return null;
     }
+
+    Expression? leftExpr = prefix(this);
+
+    while ((_peekToken.type != TokenType.NewLine || _peekToken.type != TokenType.Eof) &&
+        precedence < _peekPrecedence()) {
+      //
+      final infix = _infixParseFn[_peekToken.type];
+      if (infix == null) {
+        return leftExpr;
+      }
+      _nextToken();
+      leftExpr = infix(this, leftExpr!);
+      if (leftExpr == null) {
+        return null;
+      }
+    }
+
+    return leftExpr;
+  }
+
+  static Identifier _parseIdentifier(Parser parser) {
+    return Identifier(parser._currenToken.literal, parser._currenToken);
+  }
+
+  static Number _parseNumber(Parser parser) {
+    return Number(double.parse(parser._currenToken.literal), parser._currenToken);
+  }
+
+  static StringLiteral _parseStringLiteral(Parser parser) {
+    return StringLiteral(parser._currenToken.literal, parser._currenToken);
+  }
+
+  static InterpolableStringLiteral _parseInterpolableStringLiteral(Parser parser) {
+    return InterpolableStringLiteral(parser._currenToken.literal, parser._currenToken);
+  }
+
+  static Boolean _parseBooleanTrue(Parser parser) {
+    return Boolean(true, parser._currenToken);
+  }
+
+  static Boolean _parseBooleanFalse(Parser parser) {
+    return Boolean(false, parser._currenToken);
+  }
+
+  static PrefixExpression _parsePrefixExpression(Parser parser) {
+    final op = Operator.from(parser._currenToken.type);
+    final token = parser._currenToken;
+    parser._nextToken();
+    return PrefixExpression(op, parser._parseExpression(_Precedence.prefix)!, token);
+  }
+
+  static InfixExpression? _parseInfixExpression(Parser parser, Expression left) {
+    final token = parser._currenToken;
+    final op = Operator.from(parser._currenToken.type);
+
+    final precedence = parser._currentPrecedence();
+    parser._nextToken();
+    final right = parser._parseExpression(precedence);
+    if (right == null) {
+      return null;
+    }
+
+    return InfixExpression(left, op, right, token);
   }
 }
+
+enum _Precedence {
+  lowest,
+  equals,
+  less_greater,
+  sum,
+  product,
+  prefix;
+
+  bool operator <(_Precedence other) {
+    return index < other.index;
+  }
+
+  bool operator <=(_Precedence other) {
+    return index <= other.index;
+  }
+
+  bool operator >(_Precedence other) {
+    return index > other.index;
+  }
+
+  bool operator >=(_Precedence other) {
+    return index >= other.index;
+  }
+}
+
+const _prefixParseFn = {
+  TokenType.KwTrue: Parser._parseBooleanTrue,
+  TokenType.KwFalse: Parser._parseBooleanFalse,
+  TokenType.Identifier: Parser._parseIdentifier,
+  TokenType.StringLiteral: Parser._parseStringLiteral,
+  TokenType.InterpolableStringLiteral: Parser._parseInterpolableStringLiteral,
+  TokenType.Number: Parser._parseNumber,
+  TokenType.Bang: Parser._parsePrefixExpression,
+  TokenType.Minus: Parser._parsePrefixExpression,
+};
+
+const _infixParseFn = {
+  TokenType.Plus: Parser._parseInfixExpression,
+  TokenType.Minus: Parser._parseInfixExpression,
+  TokenType.Div: Parser._parseInfixExpression,
+  TokenType.Mult: Parser._parseInfixExpression,
+  TokenType.Equals: Parser._parseInfixExpression,
+  TokenType.NotEquals: Parser._parseInfixExpression,
+  TokenType.LessThan: Parser._parseInfixExpression,
+  TokenType.LessOrEqThan: Parser._parseInfixExpression,
+  TokenType.GreatThan: Parser._parseInfixExpression,
+  TokenType.GreatOrEqThan: Parser._parseInfixExpression,
+};
+
+const _precedences = {
+  TokenType.Equals: _Precedence.equals,
+  TokenType.NotEquals: _Precedence.equals,
+  TokenType.LessThan: _Precedence.less_greater,
+  TokenType.LessOrEqThan: _Precedence.less_greater,
+  TokenType.GreatThan: _Precedence.less_greater,
+  TokenType.GreatOrEqThan: _Precedence.less_greater,
+  TokenType.Plus: _Precedence.sum,
+  TokenType.Minus: _Precedence.sum,
+  TokenType.Mult: _Precedence.product,
+  TokenType.Div: _Precedence.product,
+};

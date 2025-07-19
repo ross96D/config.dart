@@ -91,4 +91,70 @@ VAR = "SOMETHINGS"
       ),
     );
   });
+
+  test("parse prefix operators", () {
+    final tests = [("var = -5", Operator.Minus, 5.0), ("var = !true", Operator.Bang, true)];
+    for (final t in tests) {
+      final lexer = Lexer(t.$1);
+      final parser = Parser(lexer);
+      final program = parser.parseProgram();
+
+      expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+      expect(program.lines.length, equals(1));
+      expect(
+        program,
+        equals(
+          Program("", [
+            AssigmentLine(
+              Identifier("var"),
+              PrefixExpression(t.$2, switch (t.$3) {
+                double v => Number(v),
+                bool v => Boolean(v),
+                _ => throw StateError("unreachable"),
+              }),
+            ),
+          ]),
+        ),
+      );
+    }
+  });
+
+  test("parse infix operators", () {
+    final tests = [
+      ("var = 4 - 5", 4.0, Operator.Minus, 5.0),
+      ("var = 3 * 2", 3.0, Operator.Mult, 2.0),
+      ("var = identifer + 2", "identifer", Operator.Plus, 2.0),
+      ("var = 3 < 2", 3.0, Operator.LessThan, 2.0),
+      ("var = 3 <= 2", 3.0, Operator.LessOrEqThan, 2.0),
+      ("var = 3 > 2", 3.0, Operator.GreatThan, 2.0),
+      ("var = 3 >= 2", 3.0, Operator.GreatOrEqThan, 2.0),
+    ];
+    for (final t in tests) {
+      final lexer = Lexer(t.$1);
+      final parser = Parser(lexer);
+      final program = parser.parseProgram();
+
+      expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+      expect(program.lines.length, equals(1));
+      expect(
+        program,
+        equals(
+          Program("", [
+            AssigmentLine(
+              Identifier("var"),
+              InfixExpression(
+                switch (t.$2) {
+                  double v => Number(v),
+                  String v => Identifier(v),
+                  _ => throw StateError("unreachable"),
+                },
+                t.$3,
+                Number(t.$4),
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
+  });
 }

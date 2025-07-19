@@ -1,5 +1,52 @@
 // ignore_for_file: constant_identifier_names
 
+enum Operator {
+  Mult,
+  Div,
+  Plus,
+  Minus,
+
+  Equals,
+  GreatThan,
+  GreatOrEqThan,
+  LessThan,
+  LessOrEqThan,
+
+  Bang;
+
+  @override
+  String toString() {
+    return switch (this) {
+      Operator.Mult => "*",
+      Operator.Div => "/",
+      Operator.Plus => "+",
+      Operator.Minus => "-",
+      Operator.GreatThan => ">",
+      Operator.GreatOrEqThan => ">=",
+      Operator.LessThan => "<",
+      Operator.LessOrEqThan => "<=",
+      Operator.Bang => "!",
+      Operator.Equals => "==",
+    };
+  }
+
+  static Operator from(TokenType type) {
+    return switch (type) {
+      TokenType.Mult => Mult,
+      TokenType.Div => Div,
+      TokenType.Plus => Plus,
+      TokenType.Minus => Minus,
+      TokenType.GreatThan => GreatThan,
+      TokenType.GreatOrEqThan => GreatOrEqThan,
+      TokenType.LessThan => LessThan,
+      TokenType.LessOrEqThan => LessOrEqThan,
+      TokenType.Bang => Bang,
+      TokenType.Equals => Equals,
+      _ => throw StateError("unreachable token type $type is not an operation"),
+    };
+  }
+}
+
 enum TokenType {
   Illegal,
   Eof,
@@ -23,9 +70,13 @@ enum TokenType {
 
   Mult,
   Div,
-  Add,
-  Sub,
+  Plus,
+  Minus,
 
+  Bang,
+
+  Equals,
+  NotEquals,
   GreatThan,
   GreatOrEqThan,
   LessThan,
@@ -151,16 +202,20 @@ class Token {
 
       TokenType.Mult => "*",
       TokenType.Div => "/",
-      TokenType.Add => "+",
-      TokenType.Sub => "-",
+      TokenType.Plus => "+",
+      TokenType.Minus => "-",
 
       TokenType.LeftParent => "(",
       TokenType.RigthParent => ")",
 
+      TokenType.Equals => "==",
+      TokenType.NotEquals => "!=",
       TokenType.GreatThan => ">",
       TokenType.GreatOrEqThan => ">=",
       TokenType.LessThan => "<",
       TokenType.LessOrEqThan => "<=",
+
+      TokenType.Bang => "!",
     };
   }
 }

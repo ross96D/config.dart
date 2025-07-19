@@ -137,9 +137,9 @@ key4 = 32 < (42 * 21) + 12 - 10
         Token(type: TokenType.Mult, literal: "*"),
         Token(type: TokenType.Number, literal: "21"),
         Token(type: TokenType.RigthParent, literal: ")"),
-        Token(type: TokenType.Add, literal: "+"),
+        Token(type: TokenType.Plus, literal: "+"),
         Token(type: TokenType.Number, literal: "12"),
-        Token(type: TokenType.Sub, literal: "-"),
+        Token(type: TokenType.Minus, literal: "-"),
         Token(type: TokenType.Number, literal: "10"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
