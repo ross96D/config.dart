@@ -153,30 +153,35 @@ class Parser {
       case TokenType.Assign:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
-      case TokenType.LeftBrace:
+
+      case TokenType.LeftBrace || TokenType.RigthBrace:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
-      case TokenType.RigthBrace:
+
+      case TokenType.GreatThan || TokenType.GreatOrEqThan:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
-      case TokenType.Number:
+      case TokenType.LessThan || TokenType.LessOrEqThan:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
+
+      case TokenType.Number || TokenType.StringLiteral || TokenType.InterpolableStringLiteral:
+        errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
+        return null;
+
       case TokenType.RigthBracket:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.KwTrue:
-        errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
-        return null;
-      case TokenType.KwFalse:
+      case TokenType.LeftParent || TokenType.RigthParent:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.StringLiteral:
+      case TokenType.KwTrue || TokenType.KwFalse:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
-      case TokenType.InterpolableStringLiteral:
+
+      case TokenType.Mult || TokenType.Div || TokenType.Add || TokenType.Sub:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -316,6 +321,39 @@ class Parser {
 
       case TokenType.Comment:
         throw StateError("Comments are not handled in the parser");
+
+
+
+      case TokenType.LeftParent:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.RigthParent:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.Mult:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.Div:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.Add:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.Sub:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.GreatThan:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.GreatOrEqThan:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.LessThan:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case TokenType.LessOrEqThan:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 }

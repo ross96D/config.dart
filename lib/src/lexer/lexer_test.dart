@@ -79,6 +79,8 @@ key = VAR2
 [table] # table comment
 key1 = "value"
 key2 = 32
+key3 = 32 <= 42
+key4 = 32 < (42 * 21) + 12 - 10
       """;
 
       final tests = [
@@ -117,6 +119,29 @@ key2 = 32
         Token(type: TokenType.Assign, literal: "="),
         Token(type: TokenType.Number, literal: "32"),
         Token(type: TokenType.NewLine, literal: "\n"),
+
+        Token(type: TokenType.Identifier, literal: "key3"),
+        Token(type: TokenType.Assign, literal: "="),
+        Token(type: TokenType.Number, literal: "32"),
+        Token(type: TokenType.LessOrEqThan, literal: "<="),
+        Token(type: TokenType.Number, literal: "42"),
+        Token(type: TokenType.NewLine, literal: "\n"),
+
+        Token(type: TokenType.Identifier, literal: "key4"),
+        Token(type: TokenType.Assign, literal: "="),
+        Token(type: TokenType.Number, literal: "32"),
+        Token(type: TokenType.LessThan, literal: "<"),
+        Token(type: TokenType.LeftParent, literal: "("),
+        Token(type: TokenType.Number, literal: "42"),
+        Token(type: TokenType.Mult, literal: "*"),
+        Token(type: TokenType.Number, literal: "21"),
+        Token(type: TokenType.RigthParent, literal: ")"),
+        Token(type: TokenType.Add, literal: "+"),
+        Token(type: TokenType.Number, literal: "12"),
+        Token(type: TokenType.Sub, literal: "-"),
+        Token(type: TokenType.Number, literal: "10"),
+        Token(type: TokenType.NewLine, literal: "\n"),
+
         Token(type: TokenType.Eof, literal: ""),
       ];
       final lexer = Lexer(input);

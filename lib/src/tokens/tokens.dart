@@ -4,19 +4,35 @@ enum TokenType {
   Illegal,
   Eof,
   NewLine,
-  Assign,
+  Comment,
+
   LeftBrace,
   RigthBrace,
   LeftBracket,
   RigthBracket,
-  Number,
+  LeftParent,
+  RigthParent,
+
+  KwTrue,
+  KwFalse,
+
   StringLiteral,
   InterpolableStringLiteral,
-  Comment,
-  Dollar,
+  Number,
   Identifier,
-  KwTrue,
-  KwFalse;
+
+  Mult,
+  Div,
+  Add,
+  Sub,
+
+  GreatThan,
+  GreatOrEqThan,
+  LessThan,
+  LessOrEqThan,
+
+  Assign,
+  Dollar;
 
   const TokenType();
 }
@@ -108,9 +124,9 @@ class Token {
   @override
   String toString() {
     if (pos != null) {
-      return "$type(${display()}) $pos";
+      return "$type(${display()}) $literal $pos";
     } else {
-      return "$type(${display()})";
+      return "$type(${display()}) $literal ";
     }
   }
 
@@ -132,6 +148,19 @@ class Token {
       TokenType.Number => literal,
       TokenType.KwTrue => "true",
       TokenType.KwFalse => "false",
+
+      TokenType.Mult => "*",
+      TokenType.Div => "/",
+      TokenType.Add => "+",
+      TokenType.Sub => "-",
+
+      TokenType.LeftParent => "(",
+      TokenType.RigthParent => ")",
+
+      TokenType.GreatThan => ">",
+      TokenType.GreatOrEqThan => ">=",
+      TokenType.LessThan => "<",
+      TokenType.LessOrEqThan => "<=",
     };
   }
 }

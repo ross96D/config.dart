@@ -10,6 +10,9 @@ class Lexer {
 
   int _char = 0;
   int get char => _char;
+  int get nexChar {
+    return _readPosition < input.length ? input.codeUnitAt(_readPosition) : 0;
+  }
 
   int _lineNumber = 0;
   int _lineStartPosition = 0;
@@ -37,12 +40,14 @@ class Lexer {
       Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition + offset);
 
   Position _getPostion(int offset) {
-    return Position(start: _currentCursor(), end: _currentCursor(1), filepath: filepath);
+    return Position(start: _currentCursor(), end: _currentCursor(offset), filepath: filepath);
   }
 
   Token _tokenFromCurrent(TokenType type) {
     final charstr = String.fromCharCode(char);
-    return Token(type: type, literal: charstr, pos: _getPostion(1));
+    final resp = Token(type: type, literal: charstr, pos: _getPostion(1));
+    _readChar();
+    return resp;
   }
 
   Token nextToken() {
@@ -69,33 +74,63 @@ class Lexer {
       "}" => _tokenFromCurrent(TokenType.RigthBrace),
       "{" => _tokenFromCurrent(TokenType.LeftBrace),
       "\$" => _tokenFromCurrent(TokenType.Dollar),
-      "\n" => Token(
-        type: TokenType.NewLine,
-        literal: "\n",
-        pos: Position(
-          start: _currentCursor(),
-          end: Cursor(lineNumber: _lineNumber + 1, offset: 0),
-          filepath: filepath,
-        ),
-      ),
+      "*" => _tokenFromCurrent(TokenType.Mult),
+      "\\" => _tokenFromCurrent(TokenType.Div),
+      "+" => _tokenFromCurrent(TokenType.Add),
+      "-" => _tokenFromCurrent(TokenType.Sub),
+      "(" => _tokenFromCurrent(TokenType.LeftParent),
+      ")" => _tokenFromCurrent(TokenType.RigthParent),
+      "\n" => _newLine(),
+      ">" => _readGreatThan(),
+      "<" => _readLessThan(),
       "\"" => _readString('"'),
       "'" => _readString("'"),
       "#" => _readComment(),
       _ => _readLiteral(),
     };
-    switch (resp.type) {
-      case TokenType.Assign ||
-          TokenType.RigthBracket ||
-          TokenType.LeftBracket ||
-          TokenType.RigthBrace ||
-          TokenType.LeftBrace ||
-          TokenType.NewLine ||
-          TokenType.Dollar ||
-          TokenType.Illegal:
-        _readChar();
-      default:
-    }
     return resp;
+  }
+
+  Token _newLine() {
+    final resp = Token(
+      type: TokenType.NewLine,
+      literal: "\n",
+      pos: Position(
+        start: _currentCursor(),
+        end: Cursor(lineNumber: _lineNumber + 1, offset: 0),
+        filepath: filepath,
+      ),
+    );
+    _readChar();
+    return resp;
+  }
+
+  Token _illegal() {
+    final resp = Token(type: TokenType.Illegal, literal: String.fromCharCode(char), pos: _getPostion(1));
+    _readChar();
+    return resp;
+  }
+
+  Token _readGreatThan() {
+    if (String.fromCharCode(nexChar) == "=") {
+      final resp = Token(literal: ">=", type: TokenType.GreatOrEqThan, pos: _getPostion(2));
+      _readChar();
+      _readChar();
+      return resp;
+    } else {
+      return _tokenFromCurrent(TokenType.GreatThan);
+    }
+  }
+
+  Token _readLessThan() {
+    if (String.fromCharCode(nexChar) == "=") {
+      final resp = Token(literal: "<=", type: TokenType.LessOrEqThan, pos: _getPostion(2));
+      _readChar();
+      _readChar();
+      return resp;
+    } else {
+      return _tokenFromCurrent(TokenType.LessThan);
+    }
   }
 
   Token _readComment() {
@@ -151,7 +186,7 @@ class Lexer {
       95 => _readIdentifier(),
       >= 65 && <= 90 => _readIdentifier(),
       >= 97 && <= 122 => _readIdentifier(),
-      _ => Token(type: TokenType.Illegal, literal: String.fromCharCode(char), pos: _getPostion(1)),
+      _ => _illegal(),
     };
   }
 
