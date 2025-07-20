@@ -123,6 +123,7 @@ VAR = "SOMETHINGS"
     final tests = [
       ("var = 4 - 5", 4.0, Operator.Minus, 5.0),
       ("var = 3 * 2", 3.0, Operator.Mult, 2.0),
+      ("var = 3 / 2", 3.0, Operator.Div, 2.0),
       ("var = identifer + 2", "identifer", Operator.Plus, 2.0),
       ("var = 3 < 2", 3.0, Operator.LessThan, 2.0),
       ("var = 3 <= 2", 3.0, Operator.LessOrEqThan, 2.0),
@@ -155,6 +156,34 @@ VAR = "SOMETHINGS"
           ]),
         ),
       );
+    }
+  });
+
+  test("precedence operator", () {
+    final tests = [
+      ("-a * b", "((-a) * b)"),
+      ("!-a", "(!(-a))"),
+      ("a + b + c", "((a + b) + c)"),
+      ("a + b - c", "((a + b) - c)"),
+      ("a * b * c", "((a * b) * c)"),
+      ("a * b / c", "((a * b) / c)"),
+      ("a + b / c", "(a + (b / c))"),
+      ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+      ("5 > 4 == 3 < 4", "((5.0 > 4.0) == (3.0 < 4.0))"),
+      ("5 < 4 != 3 > 4", "((5.0 < 4.0) != (3.0 > 4.0))"),
+      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3.0 + (4.0 * 5.0)) == ((3.0 * 1.0) + (4.0 * 5.0)))"),
+      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3.0 + (4.0 * 5.0)) == ((3.0 * 1.0) + (4.0 * 5.0)))"),
+      // grouped expressions
+      ("(5 + 5) * 2", "((5.0 + 5.0) * 2.0)"),
+      ("2 / (5 + 5)", "(2.0 / (5.0 + 5.0))"),
+      ("-(5 + 5)", "(-(5.0 + 5.0))"),
+      ("!(true == true)", "(!(true == true))"),
+    ];
+    for (final t in tests) {
+      final parser = Parser(Lexer("var = ${t.$1}"));
+      final program = parser.parseProgram();
+      expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+      expect(program.toString(), equals("var = ${t.$2}"));
     }
   });
 }

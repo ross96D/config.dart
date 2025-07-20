@@ -7,6 +7,7 @@ enum Operator {
   Minus,
 
   Equals,
+  NotEquals,
   GreatThan,
   GreatOrEqThan,
   LessThan,
@@ -27,6 +28,7 @@ enum Operator {
       Operator.LessOrEqThan => "<=",
       Operator.Bang => "!",
       Operator.Equals => "==",
+      Operator.NotEquals => "!=",
     };
   }
 
@@ -42,6 +44,7 @@ enum Operator {
       TokenType.LessOrEqThan => LessOrEqThan,
       TokenType.Bang => Bang,
       TokenType.Equals => Equals,
+      TokenType.NotEquals => NotEquals,
       _ => throw StateError("unreachable token type $type is not an operation"),
     };
   }

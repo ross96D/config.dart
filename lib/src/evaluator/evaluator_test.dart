@@ -42,6 +42,36 @@ VAR4 = "VAL"
     );
   });
 
+
+  test("operators", () {
+    final input = """
+VAR1 = (12 + 13) * 5
+VAR2 = 10 * 12
+VAR3 = 12 / 12
+    """;
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+
+    final program = parser.parseProgram();
+
+    final evaluator = Evaluator(program);
+    evaluator.eval();
+
+    expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join('\n'));
+
+    expect(
+      evaluator.result.toMap(),
+      equals({
+        "VAR1": 125.0,
+        "VAR2": 120,
+        "VAR3": 1,
+      }),
+      reason: program.toString(),
+    );
+  });
+
+
   test("schema success", () {
     final input = "VAR1 = 'value'";
 
@@ -168,7 +198,10 @@ VAR = 12
 
     expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<ConflictTypeError>());
-    expect(evaluator.errors[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)));
+    expect(
+      evaluator.errors[0],
+      equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)),
+    );
   });
 
   test("missing required key", () {

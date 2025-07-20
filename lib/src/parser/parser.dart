@@ -354,12 +354,24 @@ class Parser {
 
     return InfixExpression(left, op, right, token);
   }
+
+  static Expression? _parseGroupExpression(Parser parser) {
+    parser._nextToken();
+    final expr = parser._parseExpression(_Precedence.lowest);
+    if (expr == null) {
+      return null;
+    }
+    if (!parser._expectPeek(TokenType.RigthParent)) {
+      return null;
+    }
+    return expr;
+  }
 }
 
 enum _Precedence {
   lowest,
   equals,
-  less_greater,
+  lessGreater,
   sum,
   product,
   prefix;
@@ -390,6 +402,7 @@ const _prefixParseFn = {
   TokenType.Number: Parser._parseNumber,
   TokenType.Bang: Parser._parsePrefixExpression,
   TokenType.Minus: Parser._parsePrefixExpression,
+  TokenType.LeftParent: Parser._parseGroupExpression,
 };
 
 const _infixParseFn = {
@@ -408,10 +421,10 @@ const _infixParseFn = {
 const _precedences = {
   TokenType.Equals: _Precedence.equals,
   TokenType.NotEquals: _Precedence.equals,
-  TokenType.LessThan: _Precedence.less_greater,
-  TokenType.LessOrEqThan: _Precedence.less_greater,
-  TokenType.GreatThan: _Precedence.less_greater,
-  TokenType.GreatOrEqThan: _Precedence.less_greater,
+  TokenType.LessThan: _Precedence.lessGreater,
+  TokenType.LessOrEqThan: _Precedence.lessGreater,
+  TokenType.GreatThan: _Precedence.lessGreater,
+  TokenType.GreatOrEqThan: _Precedence.lessGreater,
   TokenType.Plus: _Precedence.sum,
   TokenType.Minus: _Precedence.sum,
   TokenType.Mult: _Precedence.product,

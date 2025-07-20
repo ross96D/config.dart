@@ -74,12 +74,12 @@ class Lexer {
       "{" => _tokenFromCurrent(TokenType.LeftBrace),
       "\$" => _tokenFromCurrent(TokenType.Dollar),
       "*" => _tokenFromCurrent(TokenType.Mult),
-      "\\" => _tokenFromCurrent(TokenType.Div),
+      "/" => _tokenFromCurrent(TokenType.Div),
       "+" => _tokenFromCurrent(TokenType.Plus),
       "-" => _tokenFromCurrent(TokenType.Minus),
       "(" => _tokenFromCurrent(TokenType.LeftParent),
       ")" => _tokenFromCurrent(TokenType.RigthParent),
-      "!" => _tokenFromCurrent(TokenType.Bang),
+      "!" => _readBang(),
       "\n" => _newLine(),
       "=" => _readEqual(),
       ">" => _readGreatThan(),
@@ -107,7 +107,11 @@ class Lexer {
   }
 
   Token _illegal() {
-    final resp = Token(type: TokenType.Illegal, literal: String.fromCharCode(char), pos: _getPostion(1));
+    final resp = Token(
+      type: TokenType.Illegal,
+      literal: String.fromCharCode(char),
+      pos: _getPostion(1),
+    );
     _readChar();
     return resp;
   }
@@ -120,6 +124,17 @@ class Lexer {
       return resp;
     } else {
       return _tokenFromCurrent(TokenType.Assign);
+    }
+  }
+
+  Token _readBang() {
+    if (String.fromCharCode(nexChar) == "=") {
+      final resp = Token(literal: "!=", type: TokenType.NotEquals, pos: _getPostion(2));
+      _readChar();
+      _readChar();
+      return resp;
+    } else {
+      return _tokenFromCurrent(TokenType.Bang);
     }
   }
 

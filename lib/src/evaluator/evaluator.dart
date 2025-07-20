@@ -1,4 +1,5 @@
 import 'package:config/src/ast/ast.dart';
+import 'package:config/src/tokens/tokens.dart';
 
 class EvaluationResult {
   final MapValue values;
@@ -171,6 +172,21 @@ class KeyNotInSchemaError extends EvaluationError {
   int get hashCode => Object.hashAll([line, keyName, filepath]);
 }
 
+class InfixOperationError extends EvaluationError {
+  final int line;
+  final String filepath;
+  final Value left;
+  final Value rigth;
+  final Operator op;
+
+  const InfixOperationError(this.left, this.op, this.rigth, this.line, this.filepath);
+
+  @override
+  String error() {
+    return "InfixOperationError";
+  }
+}
+
 class ConflictTypeError extends EvaluationError {
   final int line;
   final String filepath;
@@ -336,15 +352,156 @@ class Evaluator {
       case Boolean():
         return BooleanValue(expr.value, line, filepath);
 
-
-
       case PrefixExpression():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+        return _resolvePrefixExpr(expr);
       case InfixExpression():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+        return _infixPrefixExpr(expr);
     }
+  }
+
+  Value _resolvePrefixExpr(PrefixExpression prefexpr) {
+    final rightValue = _resolveExpr(prefexpr.expr);
+    switch (prefexpr.op) {
+      case Operator.Minus:
+        return switch (rightValue) {
+          NumberValue v => NumberValue(-1 * v.value, v.line, v.filepath),
+          _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
+        };
+      case Operator.Bang:
+        return switch (rightValue) {
+          BooleanValue v => BooleanValue(!v.value, v.line, v.filepath),
+          _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
+        };
+      default:
+        throw StateError("unreachable");
+    }
+  }
+
+  Value _infixPrefixExpr(InfixExpression expr) {
+    final left = _resolveExpr(expr.right);
+    final rigth = _resolveExpr(expr.left);
+    return switch (expr.op) {
+      Operator.Mult => _multiply(left, rigth, expr.token),
+      Operator.Div => _divide(left, rigth, expr.token),
+      Operator.Plus => _add(left, rigth, expr.token),
+      Operator.Minus => _sub(left, rigth, expr.token),
+      Operator.Equals => _eq(left, rigth),
+      Operator.NotEquals => _neq(left, rigth),
+      Operator.GreatThan => _gt(left, rigth, expr.token),
+      Operator.GreatOrEqThan => _gte(left, rigth, expr.token),
+      Operator.LessThan => _lt(left, rigth, expr.token),
+      Operator.LessOrEqThan => _lte(left, rigth, expr.token),
+      Operator.Bang => throw StateError("unreachable"),
+    };
+  }
+
+  Value _multiply(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Mult,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return NumberValue(left.value * right.value, left.line, left.filepath);
+  }
+
+  Value _divide(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Div,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return NumberValue(left.value / right.value, left.line, left.filepath);
+  }
+
+  Value _add(Value left, Value right, Token token) {
+    if (left is NumberValue && right is NumberValue) {
+      return NumberValue(left.value + right.value, left.line, left.filepath);
+    }
+    if (left is StringValue && right is StringValue) {
+      return StringValue(left.value + right.value, left.line, left.filepath);
+    }
+    throw InfixOperationError(
+      left,
+      Operator.Plus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
+  }
+
+  Value _sub(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Minus,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return NumberValue(left.value - right.value, left.line, left.filepath);
+  }
+  Value _eq(Value left, Value right) {
+    return BooleanValue(left.value == right.value, left.line, left.filepath);
+  }
+  Value _neq(Value left, Value right) {
+    return BooleanValue(left.value != right.value, left.line, left.filepath);
+  }
+  Value _gt(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Minus,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return BooleanValue(left.value > right.value, left.line, left.filepath);
+  }
+  Value _gte(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Minus,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return BooleanValue(left.value >= right.value, left.line, left.filepath);
+  }
+  Value _lt(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Minus,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return BooleanValue(left.value < right.value, left.line, left.filepath);
+  }
+  Value _lte(Value left, Value right, Token token) {
+    if (left is! NumberValue || right is! NumberValue) {
+      throw InfixOperationError(
+        left,
+        Operator.Minus,
+        right,
+        token.pos!.start.lineNumber,
+        token.pos!.filepath,
+      );
+    }
+    return BooleanValue(left.value <= right.value, left.line, left.filepath);
   }
 
   String _resolveInterpolableString(String str) {

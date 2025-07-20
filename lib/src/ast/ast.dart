@@ -112,6 +112,11 @@ class Identifier extends _GenericExpression<String> {
 
 class Boolean extends _GenericExpression<bool> {
   Boolean(super.value, [super.token]);
+
+  @override
+  String toString() {
+    return "$value";
+  }
 }
 
 class Number extends _GenericExpression<double> {
