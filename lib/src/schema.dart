@@ -1,6 +1,6 @@
 import 'package:config/config.dart';
 
-typedef MapperFn<Rec extends Object, Res extends Object> = Result<Res> Function(Rec value);
+typedef MapperFn<Rec extends Object, Res extends Object> = TransformResult<Res> Function(Rec value);
 
 class Field<Rec extends Object, Res extends Object> {
   final String name;
@@ -12,7 +12,7 @@ class Field<Rec extends Object, Res extends Object> {
 
   const Field(this.name, this._map, this.defaultTo, this.nullable) : typeRec = Rec, typeRes = Res;
 
-  Result validator(Object value) {
+  TransformResult validator(Object value) {
     return _map(value as Rec);
   }
 }
@@ -25,7 +25,7 @@ class StringField extends Field<String, String> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result<String> _noTransform(String v) => Success(v);
+  static TransformResult<String> _noTransform(String v) => TransformSuccess(v);
 }
 
 class NumberField extends Field<double, double> {
@@ -36,7 +36,7 @@ class NumberField extends Field<double, double> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result<double> _noTransform(double v) => Success(v);
+  static TransformResult<double> _noTransform(double v) => TransformSuccess(v);
 }
 
 class BooleanField extends Field<bool, bool> {
@@ -47,7 +47,7 @@ class BooleanField extends Field<bool, bool> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result<bool> _noTransform(bool v) => Success(v);
+  static TransformResult<bool> _noTransform(bool v) => TransformSuccess(v);
 }
 
 class InvalidStringToEnum extends ValidationError {
@@ -61,14 +61,14 @@ class EnumField<T extends Enum> extends Field<String, T> {
   EnumField(String name, MapperFn<String, T> transform, {T? defaultTo, bool nullable = false})
     : super(name, transform, defaultTo, nullable);
 
-  static Result<T> Function(String) transform<T extends Enum>(List<T> values) {
+  static TransformResult<T> Function(String) transform<T extends Enum>(List<T> values) {
     return (v) {
       for (final e in values) {
         if (v == e.name) {
-          return Success<T>(e);
+          return TransformSuccess<T>(e);
         }
       }
-      return Failure(InvalidStringToEnum());
+      return TransformError(InvalidStringToEnum());
     };
   }
 }
@@ -113,9 +113,9 @@ class TableSchema {
           continue;
         }
         switch (field.validator(evalValue.value)) {
-          case Success result:
+          case TransformSuccess result:
             response[key] = result.value;
-          case Failure result:
+          case TransformError result:
             result.value.original = evalValue;
             errors.add(result.value);
         }

@@ -59,7 +59,11 @@ VAR3 = 12 / 12
     final evaluator = Evaluator(program);
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(0),
+      reason: evaluator.errors.join('\n'),
+    );
 
     expect(
       evaluator.result.toMap(),
@@ -83,7 +87,9 @@ VAR2 = 2
         StringField(
           "VAR1",
           transform:
-              ((v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v))
+              ((v) => v != 'value'
+                      ? TransformError(NotEqualValidationError())
+                      : TransformSuccess(v))
                   as MapperFn<String, String>,
         ),
         NumberField("VAR2"),
@@ -94,7 +100,11 @@ VAR2 = 2
     final evaluator = Evaluator(program, schema);
     final result = evaluator.eval();
 
-    expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join("\n"));
+    expect(
+      evaluator.errors.length,
+      equals(0),
+      reason: evaluator.errors.join("\n"),
+    );
     expect(result, equals({"VAR1": "value", "VAR2": 2.0, "VAR3": null}));
 
     expect(evaluator.errors, isEmpty);
@@ -112,7 +122,9 @@ VAR2 = 2
         StringField(
           "VAR1",
           transform:
-              ((v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v))
+              ((v) => v != 'value'
+                      ? TransformError(NotEqualValidationError())
+                      : TransformSuccess(v))
                   as MapperFn<String, String>,
         ),
       ],
@@ -121,7 +133,11 @@ VAR2 = 2
     final evaluator = Evaluator(program, schema);
     evaluator.eval();
 
-    expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      greaterThanOrEqualTo(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<NotEqualValidationError>());
   });
 
@@ -151,7 +167,11 @@ VAR2 = 2
     final evaluator = Evaluator(program, schema);
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
   });
 
@@ -168,9 +188,16 @@ VAR2 = 2
     final evaluator = Evaluator(program);
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<TableNameDefinedAsKeyError>());
-    expect(evaluator.errors[0], equals(TableNameDefinedAsKeyError("TABLE", 0, "")));
+    expect(
+      evaluator.errors[0],
+      equals(TableNameDefinedAsKeyError("TABLE", 0, "")),
+    );
   });
 
   test("duplicated key error", () {
@@ -185,9 +212,16 @@ VAR2 = 2
     final evaluator = Evaluator(program);
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<DuplicatedKeyError>());
-    expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+    expect(
+      evaluator.errors[0],
+      equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")),
+    );
     print(evaluator.errors[0].error());
   });
 
@@ -201,9 +235,16 @@ VAR2 = 2
     final evaluator = Evaluator(program, Schema());
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
-    expect(evaluator.errors[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
+    expect(
+      evaluator.errors[0],
+      equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")),
+    );
   });
 
   test("type conflict", () {
@@ -216,7 +257,11 @@ VAR2 = 2
     final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
     evaluator.eval();
 
-    expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      greaterThanOrEqualTo(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<ConflictTypeError>());
     expect(
       evaluator.errors[0],
@@ -234,7 +279,11 @@ VAR2 = 2
     final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
     evaluator.eval();
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(
+      evaluator.errors.length,
+      equals(1),
+      reason: evaluator.errors.join('\n'),
+    );
     expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
     expect(evaluator.errors[0], equals(RequiredKeyIsMissing("VAR")));
   });

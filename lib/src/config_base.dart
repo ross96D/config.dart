@@ -2,36 +2,57 @@ import 'dart:io';
 
 import 'package:config/config.dart';
 import 'package:config/src/lexer/lexer.dart';
-import 'package:config/src/schema.dart';
 
-class EvaluationResult {
-  final Map<String, dynamic> values;
+sealed class EvaluationResult {}
+
+class EvaluationParseError extends EvaluationResult {
+  List<ParseError> errors;
+  EvaluationParseError(this.errors);
+}
+
+class EvaluationValidationError extends EvaluationResult {
   final List<EvaluationError> errors;
-  const EvaluationResult(this.values, this.errors);
+  final Map<String, dynamic> values;
+  EvaluationValidationError(this.errors, this.values);
+}
+
+class EvaluationSuccess extends EvaluationResult {
+  final Map<String, dynamic> values;
+  EvaluationSuccess(this.values);
 }
 
 class ConfigurationParser {
-  static (EvaluationResult?, List<ParseError>?) parseFromFile(
+  const ConfigurationParser();
+
+  Future<EvaluationResult> parseFromFile(
+    File file, {
+    Schema? schema,
+    Map<String, String> predefinedDeclarations = const {},
+  }) async {
+    String content = await file.readAsString();
+    return parseFromString(
+      content,
+      schema: schema,
+      filepath: file.path,
+      predefinedDeclarations: predefinedDeclarations,
+    );
+  }
+
+  EvaluationResult parseFromFileSync(
     File file, {
     Schema? schema,
     Map<String, String> predefinedDeclarations = const {},
   }) {
     String content = file.readAsStringSync();
-    final lexer = Lexer(content, file.path);
-    final parser = Parser(lexer);
-    final program = parser.parseProgram();
-    if (parser.errors.isNotEmpty) {
-      return (null, parser.errors);
-    }
-    final evaluator = Evaluator(program);
-    evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
+    return parseFromString(
+      content,
+      schema: schema,
+      filepath: file.path,
+      predefinedDeclarations: predefinedDeclarations,
     );
-    final res = evaluator.eval();
-    return (EvaluationResult(res, evaluator.errors), null);
   }
 
-  static (EvaluationResult?, List<ParseError>?) parseFromString(
+  EvaluationResult parseFromString(
     String content, {
     Map<String, String> predefinedDeclarations = const {},
     String filepath = "",
@@ -41,25 +62,31 @@ class ConfigurationParser {
     final parser = Parser(lexer);
     final program = parser.parseProgram();
     if (parser.errors.isNotEmpty) {
-      return (null, parser.errors);
+      return EvaluationParseError(parser.errors);
     }
     final evaluator = Evaluator(program, schema);
     evaluator.declarations.addAll(
       predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
     );
     final res = evaluator.eval();
-    return (EvaluationResult(res, evaluator.errors), null);
+    if (evaluator.errors.isNotEmpty) {
+      return EvaluationValidationError(evaluator.errors, res);
+    }
+    return EvaluationSuccess(res);
   }
 }
 
-sealed class Result<T extends Object> {}
-class Success<T extends Object> extends Result<T> {
+sealed class TransformResult<T extends Object> {}
+
+class TransformSuccess<T extends Object> extends TransformResult<T> {
   final Type type;
   final T value;
-  Success(this.value) : type = T;
+  TransformSuccess(this.value) : type = T;
 }
-class Failure<T extends ValidationError, __ extends Object> extends Result<__> {
+
+class TransformError<T extends ValidationError, __ extends Object>
+    extends TransformResult<__> {
   final Type type;
   final T value;
-  Failure(this.value) : type = T;
+  TransformError(this.value) : type = T;
 }
