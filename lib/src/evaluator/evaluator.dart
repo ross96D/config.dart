@@ -1,4 +1,6 @@
+import 'package:config/config.dart';
 import 'package:config/src/ast/ast.dart';
+import 'package:config/src/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
 
 class EvaluationResult {
@@ -283,27 +285,13 @@ class Evaluator {
       errors.add(DuplicatedKeyError(key, scopeToSet.value[key]!.line, value.line, value.filepath));
       return false;
     }
-    if (schema != null) {
-      final error = schema!._validate(key, _currentScope, value);
-      switch (error) {
-        case _MissingKey():
-          errors.add(KeyNotInSchemaError(key, value.line, value.filepath));
-        case _TypeError v:
-          errors.add(ConflictTypeError(key, value.line, value.filepath, v.expected, v.actual));
-          return false;
-        case _ValidationError():
-          errors.add(error.error);
-          return false;
-        case null:
-      }
-    }
     scopeToSet.value[key] = value;
     return true;
   }
 
-  MapValue eval() {
+  Map<String, dynamic> eval() {
     if (_programEvaluated) {
-      return result;
+      throw UnimplementedError("TODO");
     } else {
       _programEvaluated = true;
     }
@@ -325,12 +313,15 @@ class Evaluator {
       }
     }
 
-    // assign defautls
+    late final Map<String, dynamic> response;
     if (schema != null) {
-      schema!._defaultAndRequired(result, errors);
+      response = {};
+      schema!.apply(response, result, errors);
+    } else {
+      response = result.toMap();
     }
 
-    return result;
+    return response;
   }
 
   Value _resolveExpr(Expression expr) {
@@ -449,12 +440,15 @@ class Evaluator {
     }
     return NumberValue(left.value - right.value, left.line, left.filepath);
   }
+
   Value _eq(Value left, Value right) {
     return BooleanValue(left.value == right.value, left.line, left.filepath);
   }
+
   Value _neq(Value left, Value right) {
     return BooleanValue(left.value != right.value, left.line, left.filepath);
   }
+
   Value _gt(Value left, Value right, Token token) {
     if (left is! NumberValue || right is! NumberValue) {
       throw InfixOperationError(
@@ -467,6 +461,7 @@ class Evaluator {
     }
     return BooleanValue(left.value > right.value, left.line, left.filepath);
   }
+
   Value _gte(Value left, Value right, Token token) {
     if (left is! NumberValue || right is! NumberValue) {
       throw InfixOperationError(
@@ -479,6 +474,7 @@ class Evaluator {
     }
     return BooleanValue(left.value >= right.value, left.line, left.filepath);
   }
+
   Value _lt(Value left, Value right, Token token) {
     if (left is! NumberValue || right is! NumberValue) {
       throw InfixOperationError(
@@ -491,6 +487,7 @@ class Evaluator {
     }
     return BooleanValue(left.value < right.value, left.line, left.filepath);
   }
+
   Value _lte(Value left, Value right, Token token) {
     if (left is! NumberValue || right is! NumberValue) {
       throw InfixOperationError(
@@ -552,151 +549,10 @@ bool _isLetterOr_(int char) {
   return char == 95 || (char >= 65 && char <= 90) || (char >= 97 && char <= 122);
 }
 
-typedef ValidatorFn<T extends Object> = ValidationError? Function(T value);
-
 abstract class ValidationError extends EvaluationError {
-  const ValidationError();
-}
+  late Value original;
+  int get line => original.line;
+  String get filepath => original.filepath;
 
-class _Item<T extends Object> {
-  final String name;
-  final Type type;
-  final ValidatorFn<T>? _validator;
-  final T? defaultTo;
-
-  const _Item(this.name, this._validator, this.defaultTo) : type = T;
-
-  ValidationError? validator(Object value) {
-    if (_validator == null) {
-      return null;
-    }
-    return _validator(value as T);
-  }
-}
-
-class TableSchema {
-  final Map<String, _Item> _fields;
-  final Map<String, TableSchema> _tables;
-
-  TableSchema() : _fields = {}, _tables = {};
-
-  void field<T extends Object>(String name, {ValidatorFn<T>? validator, T? defaultsTo}) {
-    _fields[name] = _Item<T>(name, validator, defaultsTo);
-  }
-
-  void table(String tableName, TableSchema table) {
-    _tables[tableName] = table;
-  }
-
-  void _defaultAndRequired(MapValue result, List<EvaluationError> errors) {
-    for (final entry in _fields.entries) {
-      if (entry.value.defaultTo == null) {
-        if (result[entry.key] == null) {
-          errors.add(RequiredKeyIsMissing(entry.key));
-        }
-        continue;
-      }
-
-      if (result[entry.key] == null) {
-        switch (entry.value.type) {
-          case const (double):
-            result[entry.key] = NumberValue(entry.value.defaultTo as double, -1, "");
-
-          case const (String):
-            result[entry.key] = StringValue(entry.value.defaultTo as String, -1, "");
-
-          case const (bool):
-            result[entry.key] = BooleanValue(entry.value.defaultTo as bool, -1, "");
-
-          default:
-            throw StateError("unreachable");
-        }
-      }
-    }
-
-    for (final entry in _tables.entries) {
-      if (result[entry.key] == null) {
-        result[entry.key] = MapValue.empty();
-      } else if (result[entry.key] is! MapValue) {
-        throw StateError(
-          "Unreachable key is not MapValue when is declared as Table in Schema. "
-          "Key: ${entry.key} Value: ${result[entry.key]}",
-        );
-      }
-      entry.value._defaultAndRequired(result[entry.key] as MapValue, errors);
-    }
-  }
-}
-
-sealed class _SchemaValidationResult {
-  const _SchemaValidationResult();
-}
-
-class _MissingKey extends _SchemaValidationResult {
-  const _MissingKey();
-}
-
-class _TypeError extends _SchemaValidationResult {
-  final Type expected;
-  final Type actual;
-
-  const _TypeError(this.actual, this.expected);
-}
-
-class _ValidationError extends _SchemaValidationResult {
-  final ValidationError error;
-  const _ValidationError(this.error);
-}
-
-class Schema extends TableSchema {
-  _Item? _getField(String key, List<String> tables) {
-    Map<String, TableSchema> tablesMap = _tables;
-    Map<String, _Item<Object>> fieldsMap = _fields;
-    for (final tableName in tables) {
-      if (!tablesMap.containsKey(tableName)) {
-        return null;
-      }
-      tablesMap = tablesMap[tableName]!._tables;
-      fieldsMap = tablesMap[tableName]!._fields;
-    }
-    return fieldsMap[key];
-  }
-
-  _SchemaValidationResult? _validate(String key, List<String> tables, Value value) {
-    final field = _getField(key, tables);
-    if (field == null) {
-      return _MissingKey();
-    }
-    switch (value) {
-      case NumberValue():
-        if (field.type != double) {
-          return _TypeError(double, field.type);
-        }
-        final error = field.validator(value.value);
-        if (error != null) {
-          return _ValidationError(error);
-        }
-
-      case StringValue():
-        if (field.type != String) {
-          return _TypeError(String, field.type);
-        }
-        final error = field.validator(value.value);
-        if (error != null) {
-          return _ValidationError(error);
-        }
-      case BooleanValue():
-        if (field.type != bool) {
-          return _TypeError(bool, field.type);
-        }
-        final error = field.validator(value.value);
-        if (error != null) {
-          return _ValidationError(error);
-        }
-      case MapValue():
-        throw UnimplementedError("handling map type as key value is not supported");
-    }
-
-    return null;
-  }
+  ValidationError();
 }
