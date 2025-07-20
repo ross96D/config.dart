@@ -1,6 +1,6 @@
 import 'package:config/config.dart';
 
-typedef MapperFn<Rec extends Object, Res extends Object> = Result Function(Rec value);
+typedef MapperFn<Rec extends Object, Res extends Object> = Result<Res> Function(Rec value);
 
 class Field<Rec extends Object, Res extends Object> {
   final String name;
@@ -25,7 +25,7 @@ class StringField extends Field<String, String> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result _noTransform(String v) => Success(v);
+  static Result<String> _noTransform(String v) => Success(v);
 }
 
 class NumberField extends Field<double, double> {
@@ -36,7 +36,7 @@ class NumberField extends Field<double, double> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result _noTransform(double v) => Success(v);
+  static Result<double> _noTransform(double v) => Success(v);
 }
 
 class BooleanField extends Field<bool, bool> {
@@ -47,7 +47,7 @@ class BooleanField extends Field<bool, bool> {
     bool nullable = false,
   }) : super(name, transform ?? _noTransform, defaultTo, nullable);
 
-  static Result _noTransform(bool v) => Success(v);
+  static Result<bool> _noTransform(bool v) => Success(v);
 }
 
 class InvalidStringToEnum extends ValidationError {
@@ -61,16 +61,14 @@ class EnumField<T extends Enum> extends Field<String, T> {
   EnumField(String name, MapperFn<String, T> transform, {T? defaultTo, bool nullable = false})
     : super(name, transform, defaultTo, nullable);
 
-  static Result Function(String) transform<T extends Enum>(
-    List<String> values,
-    T Function(String) from,
-  ) {
+  static Result<T> Function(String) transform<T extends Enum>(List<T> values) {
     return (v) {
-      if (values.contains(v)) {
-        return Success<T>(from(v));
-      } else {
-        return Failure(InvalidStringToEnum());
+      for (final e in values) {
+        if (v == e.name) {
+          return Success<T>(e);
+        }
       }
+      return Failure(InvalidStringToEnum());
     };
   }
 }

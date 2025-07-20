@@ -82,7 +82,9 @@ VAR2 = 2
       fields: [
         StringField(
           "VAR1",
-          transform: (v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v),
+          transform:
+              ((v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v))
+                  as MapperFn<String, String>,
         ),
         NumberField("VAR2"),
         NumberField("VAR3", nullable: true),
@@ -109,7 +111,9 @@ VAR2 = 2
       fields: [
         StringField(
           "VAR1",
-          transform: (v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v),
+          transform:
+              ((v) => v != 'value' ? Failure(NotEqualValidationError()) : Success(v))
+                  as MapperFn<String, String>,
         ),
       ],
     );
@@ -136,104 +140,104 @@ VAR2 = 2
     expect(resp, equals({"VAR1": "VALUE"}));
   });
 
-    test("schema default value", () {
-      final input = "";
+  test("schema default value", () {
+    final input = "";
 
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final schema = Schema(fields: [StringField("VAR1")]);
-      final evaluator = Evaluator(program, schema);
-      evaluator.eval();
+    final schema = Schema(fields: [StringField("VAR1")]);
+    final evaluator = Evaluator(program, schema);
+    evaluator.eval();
 
-      expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
-    });
+    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
+  });
 
-    test("table name already define as variable", () {
-      final input = """
+  test("table name already define as variable", () {
+    final input = """
   TABLE = 12
   [TABLE]
   VAR = 12
       """;
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator(program);
-      evaluator.eval();
+    final evaluator = Evaluator(program);
+    evaluator.eval();
 
-      expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<TableNameDefinedAsKeyError>());
-      expect(evaluator.errors[0], equals(TableNameDefinedAsKeyError("TABLE", 0, "")));
-    });
+    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<TableNameDefinedAsKeyError>());
+    expect(evaluator.errors[0], equals(TableNameDefinedAsKeyError("TABLE", 0, "")));
+  });
 
-    test("duplicated key error", () {
-      final input = """
+  test("duplicated key error", () {
+    final input = """
   VAR = 12
   VAR = 12
       """;
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator(program);
-      evaluator.eval();
+    final evaluator = Evaluator(program);
+    evaluator.eval();
 
-      expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<DuplicatedKeyError>());
-      expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
-      print(evaluator.errors[0].error());
-    });
+    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<DuplicatedKeyError>());
+    expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+    print(evaluator.errors[0].error());
+  });
 
-    test("key not in schema", () {
-      final input = "VAR = 12";
+  test("key not in schema", () {
+    final input = "VAR = 12";
 
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator(program, Schema());
-      evaluator.eval();
+    final evaluator = Evaluator(program, Schema());
+    evaluator.eval();
 
-      expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
-      expect(evaluator.errors[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
-    });
+    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
+    expect(evaluator.errors[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
+  });
 
-    test("type conflict", () {
-      final input = "VAR = 12";
+  test("type conflict", () {
+    final input = "VAR = 12";
 
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
-      evaluator.eval();
+    final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
+    evaluator.eval();
 
-      expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<ConflictTypeError>());
-      expect(
-        evaluator.errors[0],
-        equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)),
-      );
-    });
+    expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<ConflictTypeError>());
+    expect(
+      evaluator.errors[0],
+      equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)),
+    );
+  });
 
-    test("missing required key", () {
-      final input = "";
+  test("missing required key", () {
+    final input = "";
 
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
-      evaluator.eval();
+    final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
+    evaluator.eval();
 
-      expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-      expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
-      expect(evaluator.errors[0], equals(RequiredKeyIsMissing("VAR")));
-    });
+    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
+    expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
+    expect(evaluator.errors[0], equals(RequiredKeyIsMissing("VAR")));
+  });
 }
 
 class NotEqualValidationError extends ValidationError {

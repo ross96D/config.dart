@@ -4,6 +4,12 @@ import 'package:config/config.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/schema.dart';
 
+class EvaluationResult {
+  final Map<String, dynamic> values;
+  final List<EvaluationError> errors;
+  const EvaluationResult(this.values, this.errors);
+}
+
 class ConfigurationParser {
   static (EvaluationResult?, List<ParseError>?) parseFromFile(
     File file, {
@@ -21,8 +27,8 @@ class ConfigurationParser {
     evaluator.declarations.addAll(
       predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
     );
-    evaluator.eval();
-    return (EvaluationResult(evaluator.result, evaluator.errors), null);
+    final res = evaluator.eval();
+    return (EvaluationResult(res, evaluator.errors), null);
   }
 
   static (EvaluationResult?, List<ParseError>?) parseFromString(
@@ -41,18 +47,18 @@ class ConfigurationParser {
     evaluator.declarations.addAll(
       predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
     );
-    evaluator.eval();
-    return (EvaluationResult(evaluator.result, evaluator.errors), null);
+    final res = evaluator.eval();
+    return (EvaluationResult(res, evaluator.errors), null);
   }
 }
 
-sealed class Result {}
-class Success<T extends Object> extends Result {
+sealed class Result<T extends Object> {}
+class Success<T extends Object> extends Result<T> {
   final Type type;
   final T value;
   Success(this.value) : type = T;
 }
-class Failure<T extends ValidationError> extends Result {
+class Failure<T extends ValidationError, __ extends Object> extends Result<__> {
   final Type type;
   final T value;
   Failure(this.value) : type = T;

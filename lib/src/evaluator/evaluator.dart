@@ -3,11 +3,6 @@ import 'package:config/src/ast/ast.dart';
 import 'package:config/src/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
 
-class EvaluationResult {
-  final MapValue values;
-  final List<EvaluationError> errors;
-  const EvaluationResult(this.values, this.errors);
-}
 
 sealed class Value<T extends Object> {
   final T value;
