@@ -91,37 +91,17 @@ class EnumField<T extends Enum> extends Field<String, T> {
 
   final List<T> values;
 
-  final MapperFn<T, T>? _validator;
-
   const EnumField(
     this.name,
     this.values, {
     this.defaultTo,
     this.nullable = false,
-    MapperFn<T, T>? validator,
-  }) : _validator = validator;
+  });
 
   @override
   ValidatorResult<T> validator(String value) {
     final transformResult = _transform(value);
-    final T transformed;
-    switch (transformResult) {
-      case ValidatorError<ValidationError, Object>():
-        return transformResult;
-      case ValidatorTransform<T>():
-        transformed = transformResult.value;
-      case ValidatorSuccess<T>():
-        throw StateError("Unreachable");
-    }
-    if (_validator == null) {
-      return transformResult;
-    }
-    final validatorResult = _validator(transformed);
-    return switch (validatorResult) {
-      ValidatorSuccess<T>() => transformResult,
-      ValidatorTransform<T>() => validatorResult,
-      ValidatorError<ValidationError, Object>() => validatorResult,
-    };
+    return transformResult;
   }
 
   ValidatorResult<T> _transform(String v) {
