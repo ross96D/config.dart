@@ -18,7 +18,7 @@ class Field<Rec extends Object, Res extends Object> {
 }
 
 class StringField extends Field<String, String> {
-  StringField(
+  const StringField(
     String name, {
     String? defaultTo,
     MapperFn<String, String>? transform,
@@ -29,7 +29,7 @@ class StringField extends Field<String, String> {
 }
 
 class NumberField extends Field<double, double> {
-  NumberField(
+  const NumberField(
     String name, {
     double? defaultTo,
     MapperFn<double, double>? transform,
@@ -40,7 +40,7 @@ class NumberField extends Field<double, double> {
 }
 
 class BooleanField extends Field<bool, bool> {
-  BooleanField(
+  const BooleanField(
     String name, {
     bool? defaultTo,
     MapperFn<bool, bool>? transform,
@@ -58,7 +58,7 @@ class InvalidStringToEnum extends ValidationError {
 }
 
 class EnumField<T extends Enum> extends Field<String, T> {
-  EnumField(String name, MapperFn<String, T> transform, {T? defaultTo, bool nullable = false})
+  const EnumField(String name, MapperFn<String, T> transform, {T? defaultTo, bool nullable = false})
     : super(name, transform, defaultTo, nullable);
 
   static TransformResult<T> Function(String) transform<T extends Enum>(List<T> values) {
