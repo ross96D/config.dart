@@ -2,7 +2,7 @@ import 'package:config/config.dart';
 
 typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> Function(Rec value);
 
-abstract class Field<Rec extends Object, Res extends Object> {
+sealed class Field<Rec extends Object, Res extends Object> {
   final Type typeRec;
   final Type typeRes;
 
@@ -15,7 +15,7 @@ abstract class Field<Rec extends Object, Res extends Object> {
   ValidatorResult<Res> validator(Rec value);
 }
 
-class SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
+class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
   @override
   final String name;
 
@@ -27,7 +27,7 @@ class SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res
 
   final MapperFn<Rec, Res>? _validator;
 
-  const SimpleField(
+  const _SimpleField(
     this.name, {
     this.defaultTo,
     this.nullable = false,
@@ -45,17 +45,32 @@ class SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res
   }
 }
 
-class StringField extends SimpleField<String, String> {
-  const StringField(super.name, {super.defaultTo, super.nullable, super.validator});
+typedef StringFieldAbs<Res extends Object> = Field<String, Res>;
+
+class StringFieldBase<Res extends Object> extends _SimpleField<String, Res>
+    implements StringFieldAbs<Res> {
+  const StringFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
-class NumberField extends SimpleField<double, double> {
-  const NumberField(super.name, {super.defaultTo, super.nullable, super.validator});
+typedef StringField = StringFieldBase<String>;
+
+typedef NumberFieldAbs<Res extends Object> = Field<double, Res>;
+
+class NumberFieldBase<Res extends Object> extends _SimpleField<double, Res>
+    implements NumberFieldAbs<Res> {
+  const NumberFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
-class BooleanField extends SimpleField<bool, bool> {
-  const BooleanField(super.name, {super.defaultTo, super.nullable, super.validator});
+typedef NumberField = NumberFieldBase<double>;
+
+typedef BooleanFieldAbs<Res extends Object> = Field<bool, Res>;
+
+class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res>
+    implements BooleanFieldAbs<Res> {
+  const BooleanFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
+
+typedef BooleanField = BooleanFieldBase<bool>;
 
 class InvalidStringToEnum extends ValidationError {
   @override
