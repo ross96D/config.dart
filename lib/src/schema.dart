@@ -45,28 +45,28 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
   }
 }
 
-typedef StringFieldAbs<Res extends Object> = Field<String, Res>;
+/// If base class is not flexible enough you can implement this class
+abstract class StringFieldAbstract<Res extends Object> extends Field<String, Res> {}
 
-class StringFieldBase<Res extends Object> extends _SimpleField<String, Res>
-    implements StringFieldAbs<Res> {
+class StringFieldBase<Res extends Object> extends _SimpleField<String, Res> {
   const StringFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
 typedef StringField = StringFieldBase<String>;
 
-typedef NumberFieldAbs<Res extends Object> = Field<double, Res>;
+/// If base class is not flexible enough you can implement this class
+abstract class NumberFieldAbs<Res extends Object> extends Field<double, Res> {}
 
-class NumberFieldBase<Res extends Object> extends _SimpleField<double, Res>
-    implements NumberFieldAbs<Res> {
+class NumberFieldBase<Res extends Object> extends _SimpleField<double, Res> {
   const NumberFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
 typedef NumberField = NumberFieldBase<double>;
 
-typedef BooleanFieldAbs<Res extends Object> = Field<bool, Res>;
+/// If base class is not flexible enough you can implement this class
+abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {}
 
-class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res>
-    implements BooleanFieldAbs<Res> {
+class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res> {
   const BooleanFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
