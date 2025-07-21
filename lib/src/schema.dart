@@ -1,53 +1,60 @@
 import 'package:config/config.dart';
 
-typedef MapperFn<Rec extends Object, Res extends Object> = TransformResult<Res> Function(Rec value);
+typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> Function(Rec value);
 
-class Field<Rec extends Object, Res extends Object> {
-  final String name;
+abstract class Field<Rec extends Object, Res extends Object> {
   final Type typeRec;
   final Type typeRes;
-  final MapperFn<Rec, Res> _map;
+
+  String get name;
+  Res? get defaultTo;
+  bool get nullable;
+
+  const Field() : typeRec = Rec, typeRes = Res;
+
+  ValidatorResult<Res> validator(Rec value);
+}
+
+class SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
+  @override
+  final String name;
+
+  @override
   final Res? defaultTo;
+
+  @override
   final bool nullable;
 
-  const Field(this.name, this._map, this.defaultTo, this.nullable) : typeRec = Rec, typeRes = Res;
+  final MapperFn<Rec, Res>? _validator;
 
-  TransformResult validator(Object value) {
-    return _map(value as Rec);
+  const SimpleField(
+    this.name, {
+    this.defaultTo,
+    this.nullable = false,
+    MapperFn<Rec, Res>? validator,
+  }) : assert(
+         Rec == Res || validator != null,
+         'If the Res object type is different than the Rec type, a validator must be provided',
+       ),
+       _validator = validator;
+
+  @override
+  ValidatorResult<Res> validator(Rec value) {
+    if (_validator == null) return ValidatorSuccess();
+    return _validator(value);
   }
 }
 
-class StringField extends Field<String, String> {
-  const StringField(
-    String name, {
-    String? defaultTo,
-    MapperFn<String, String>? transform,
-    bool nullable = false,
-  }) : super(name, transform ?? _noTransform, defaultTo, nullable);
-
-  static TransformResult<String> _noTransform(String v) => TransformSuccess(v);
+class StringField extends SimpleField<String, String> {
+  const StringField(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
-class NumberField extends Field<double, double> {
-  const NumberField(
-    String name, {
-    double? defaultTo,
-    MapperFn<double, double>? transform,
-    bool nullable = false,
-  }) : super(name, transform ?? _noTransform, defaultTo, nullable);
-
-  static TransformResult<double> _noTransform(double v) => TransformSuccess(v);
+class NumberField extends SimpleField<double, double> {
+  const NumberField(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
-class BooleanField extends Field<bool, bool> {
-  const BooleanField(
-    String name, {
-    bool? defaultTo,
-    MapperFn<bool, bool>? transform,
-    bool nullable = false,
-  }) : super(name, transform ?? _noTransform, defaultTo, nullable);
-
-  static TransformResult<bool> _noTransform(bool v) => TransformSuccess(v);
+class BooleanField extends SimpleField<bool, bool> {
+  const BooleanField(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
 class InvalidStringToEnum extends ValidationError {
@@ -58,18 +65,57 @@ class InvalidStringToEnum extends ValidationError {
 }
 
 class EnumField<T extends Enum> extends Field<String, T> {
-  const EnumField(String name, MapperFn<String, T> transform, {T? defaultTo, bool nullable = false})
-    : super(name, transform, defaultTo, nullable);
+  @override
+  final String name;
 
-  static TransformResult<T> Function(String) transform<T extends Enum>(List<T> values) {
-    return (v) {
-      for (final e in values) {
-        if (v == e.name) {
-          return TransformSuccess<T>(e);
-        }
-      }
-      return TransformError(InvalidStringToEnum());
+  @override
+  final T? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final List<T> values;
+
+  final MapperFn<T, T>? _validator;
+
+  const EnumField(
+    this.name,
+    this.values, {
+    this.defaultTo,
+    this.nullable = false,
+    MapperFn<T, T>? validator,
+  }) : _validator = validator;
+
+  @override
+  ValidatorResult<T> validator(String value) {
+    final transformResult = _transform(value);
+    final T transformed;
+    switch (transformResult) {
+      case ValidatorError<ValidationError, Object>():
+        return transformResult;
+      case ValidatorTransform<T>():
+        transformed = transformResult.value;
+      case ValidatorSuccess<T>():
+        throw StateError("Unreachable");
+    }
+    if (_validator == null) {
+      return transformResult;
+    }
+    final validatorResult = _validator(transformed);
+    return switch (validatorResult) {
+      ValidatorSuccess<T>() => transformResult,
+      ValidatorTransform<T>() => validatorResult,
+      ValidatorError<ValidationError, Object>() => validatorResult,
     };
+  }
+
+  ValidatorResult<T> _transform(String v) {
+    for (final e in values) {
+      if (v == e.name) {
+        return ValidatorTransform<T>(e);
+      }
+    }
+    return ValidatorError(InvalidStringToEnum());
   }
 }
 
@@ -113,9 +159,11 @@ class TableSchema {
           continue;
         }
         switch (field.validator(evalValue.value)) {
-          case TransformSuccess result:
+          case ValidatorSuccess<Object>():
+            response[key] = evalValue.value;
+          case ValidatorTransform result:
             response[key] = result.value;
-          case TransformError result:
+          case ValidatorError result:
             result.value.original = evalValue;
             errors.add(result.value);
         }

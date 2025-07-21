@@ -76,17 +76,21 @@ class ConfigurationParser {
   }
 }
 
-sealed class TransformResult<T extends Object> {}
+sealed class ValidatorResult<T extends Object> {}
 
-class TransformSuccess<T extends Object> extends TransformResult<T> {
+class ValidatorSuccess<T extends Object> extends ValidatorResult<T> {
   final Type type;
-  final T value;
-  TransformSuccess(this.value) : type = T;
+  ValidatorSuccess() : type = T;
 }
 
-class TransformError<T extends ValidationError, __ extends Object>
-    extends TransformResult<__> {
+class ValidatorTransform<T extends Object> extends ValidatorResult<T> {
   final Type type;
   final T value;
-  TransformError(this.value) : type = T;
+  ValidatorTransform(this.value) : type = T;
+}
+
+class ValidatorError<T extends ValidationError, __ extends Object> extends ValidatorResult<__> {
+  final Type type;
+  final T value;
+  ValidatorError(this.value) : type = T;
 }
