@@ -56,11 +56,17 @@ enum TokenType {
   NewLine,
   Comment,
 
+  /// Symbol: `{`
   LeftBrace,
+  /// Symbol: `}`
   RigthBrace,
+  /// Symbol: `[`
   LeftBracket,
+  /// Symbol: `]`
   RigthBracket,
+  /// Symbol: `(`
   LeftParent,
+  /// Symbol: `)`
   RigthParent,
 
   KwTrue,
