@@ -174,7 +174,7 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.RigthBracket:
+      case TokenType.LeftBracket || TokenType.RigthBracket:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -194,10 +194,7 @@ class Parser {
         return _parseDeclaration();
 
       case TokenType.Identifier:
-        return _parseAssignment();
-
-      case TokenType.LeftBracket:
-        return _parseTableHeader();
+        return _parseIdentifierStart();
     }
   }
 
@@ -218,13 +215,40 @@ class Parser {
     return _precedences[_currenToken.type] ?? _Precedence.lowest;
   }
 
-  AssigmentLine? _parseAssignment() {
+  Line? _parseIdentifierStart() {
     assert(_currenToken.type == TokenType.Identifier);
     final identifier = Identifier(_currenToken.literal, _currenToken);
-
-    if (!_expectPeek(TokenType.Assign)) {
+    if (!_expectPeek(TokenType.Assign, TokenType.LeftBrace)) {
       return null;
     }
+    if (_currenToken.type == TokenType.LeftBrace) {
+      return _parseBlock(identifier);
+    } else {
+      return _parseAssignment(identifier);
+    }
+  }
+
+  Block _parseBlock(Identifier identifier) {
+    assert(_currenToken.type == TokenType.LeftBrace);
+    _nextToken();
+
+    List<Line> lines = [];
+    while (_currenToken.type != TokenType.RigthBrace && _currenToken.type != TokenType.Eof) {
+      final line = _parseLine();
+      if (line != null) {
+        lines.add(line);
+      }
+      _moveToLineEnd(); // just make sure to move to line end
+      _nextToken();
+    }
+    if (_currenToken.type != TokenType.RigthBrace) {
+      errors.add(ExpectedToken([TokenType.RigthBrace], _currenToken, lexer.input));
+    }
+    return Block(identifier, lines, identifier.token);
+  }
+
+  AssigmentLine? _parseAssignment(Identifier identifier) {
+    assert(_currenToken.type == TokenType.Assign);
     _nextToken();
 
     final expression = _parseExpression(_Precedence.lowest);
@@ -262,24 +286,6 @@ class Parser {
     }
 
     return DeclarationLine(identifier, expression, firstToken);
-  }
-
-  TableHeaderLine? _parseTableHeader() {
-    assert(_currenToken.type == TokenType.LeftBracket);
-
-    if (!_expectPeek(TokenType.Identifier)) {
-      return null;
-    }
-
-    final identifier = Identifier(_currenToken.literal, _currenToken);
-
-    if (!_expectPeek(TokenType.RigthBracket)) {
-      return null;
-    }
-    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
-      return null;
-    }
-    return TableHeaderLine(identifier, identifier.token);
   }
 
   Expression? _parseExpression(_Precedence precedence) {

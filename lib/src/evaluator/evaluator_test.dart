@@ -12,16 +12,18 @@ void main() {
     final input = """
 VAR1 = 'value'
 VAR2 = 12
-\$VAR3 = VAR1
+\$VAR3 = 'value'
 VAR_BOOL1 = true
 VAR_BOOL2 = false
 
-[table]
-VAR4 = "SOMETHINGS"
-VAR5 = "SOMETHINGS-\$VAR3"
+table {
+  VAR4 = "SOMETHINGS"
+  VAR5 = "SOMETHINGS-\$VAR3"
+}
 
-[table2]
-VAR4 = "VAL"
+table2 {
+  VAR4 = "VAL"
+}
 
     """;
 
@@ -29,10 +31,10 @@ VAR4 = "VAL"
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final result = Evaluator(program).eval();
+    final result = Evaluator.eval(program);
 
     expect(
-      result,
+      result.values,
       equals({
         "VAR1": "value",
         "VAR2": 12,
@@ -56,13 +58,12 @@ VAR3 = 12 / 12
 
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program);
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program);
 
     expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join('\n'));
 
     expect(
-      evaluator.result.toMap(),
+      evaluator.values,
       equals({"VAR1": 125.0, "VAR2": 120, "VAR3": 1}),
       reason: program.toString(),
     );
@@ -78,26 +79,26 @@ VAR2 = 2
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
+
+    ValidatorResult<String> validator(String v) {
+      return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
+    }
+
     final schema = Schema(
       fields: [
         StringField(
           "VAR1",
-          validator:
-              ((v) => v != 'value'
-                      ? ValidatorError(NotEqualValidationError())
-                      : ValidatorTransform(v))
-                  as MapperFn<String, String>,
+          validator: validator,
         ),
         NumberField("VAR2"),
         NumberField("VAR3", nullable: true),
       ],
     );
 
-    final evaluator = Evaluator(program, schema);
-    final result = evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: schema);
 
     expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join("\n"));
-    expect(result, equals({"VAR1": "value", "VAR2": 2.0, "VAR3": null}));
+    expect(evaluator.values, equals({"VAR1": "value", "VAR2": 2.0, "VAR3": null}));
 
     expect(evaluator.errors, isEmpty);
   });
@@ -109,21 +110,21 @@ VAR2 = 2
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
+    ValidatorResult<String> validator(String v) {
+      return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
+    }
+
+
     final schema = Schema(
       fields: [
         StringField(
           "VAR1",
-          validator:
-              ((v) => v != 'value'
-                      ? ValidatorError(NotEqualValidationError())
-                      : ValidatorTransform(v))
-                  as MapperFn<String, String>,
+          validator: validator,
         ),
       ],
     );
     // schema.field<String>("VAR1", validator: (v) => v != 'value' ? NotEqualValidationError() : null);
-    final evaluator = Evaluator(program, schema);
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: schema);
 
     expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<NotEqualValidationError>());
@@ -138,10 +139,9 @@ VAR2 = 2
 
     // final schema = Schema()..field<String>("VAR1", defaultsTo: "VALUE");
     final schema = Schema(fields: [StringField("VAR1", defaultTo: "VALUE")]);
-    final evaluator = Evaluator(program, schema);
-    final resp = evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(resp, equals({"VAR1": "VALUE"}));
+    expect(evaluator.values, equals({"VAR1": "VALUE"}));
   });
 
   test("schema default value", () {
@@ -152,8 +152,7 @@ VAR2 = 2
     final program = parser.parseProgram();
 
     final schema = Schema(fields: [StringField("VAR1")]);
-    final evaluator = Evaluator(program, schema);
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: schema);
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
@@ -161,38 +160,36 @@ VAR2 = 2
 
   test("table name already define as variable", () {
     final input = """
-  TABLE = 12
-  [TABLE]
+TABLE = 12
+TABLE {
   VAR = 12
+}
       """;
     final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program);
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program);
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<TableNameDefinedAsKeyError>());
-    expect(evaluator.errors[0], equals(TableNameDefinedAsKeyError("TABLE", 0, "")));
+    expect(evaluator.errors[0], isA<BlockNameDefinedAsKeyError>());
+    expect(evaluator.errors[0], equals(BlockNameDefinedAsKeyError("TABLE", 0, 1, "/path/to/file")));
   });
 
   test("duplicated key error", () {
     final input = """
-  VAR = 12
-  VAR = 12
+VAR = 12
+VAR = 12
       """;
     final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program);
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program);
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<DuplicatedKeyError>());
     expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
-    print(evaluator.errors[0].error());
   });
 
   test("key not in schema", () {
@@ -202,8 +199,7 @@ VAR2 = 2
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program, Schema());
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: Schema());
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
@@ -217,8 +213,7 @@ VAR2 = 2
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
 
     expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<ConflictTypeError>());
@@ -235,8 +230,7 @@ VAR2 = 2
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator(program, Schema(fields: [StringField("VAR")]));
-    evaluator.eval();
+    final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
 
     expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
     expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());

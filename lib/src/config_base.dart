@@ -1,7 +1,9 @@
 import 'dart:io';
 
-import 'package:config/config.dart';
+import 'package:config/src/evaluator/evaluator.dart';
 import 'package:config/src/lexer/lexer.dart';
+import 'package:config/src/parser/parser.dart';
+import 'package:config/src/schema.dart';
 
 sealed class EvaluationResult {}
 
@@ -64,15 +66,17 @@ class ConfigurationParser {
     if (parser.errors.isNotEmpty) {
       return EvaluationParseError(parser.errors);
     }
-    final evaluator = Evaluator(program, schema);
-    evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
+    final result = Evaluator.eval(
+      program,
+      schema: schema,
+      declarations: predefinedDeclarations.map(
+        (key, value) => MapEntry(key, StringValue(value, -1, "")),
+      ),
     );
-    final res = evaluator.eval();
-    if (evaluator.errors.isNotEmpty) {
-      return EvaluationValidationError(evaluator.errors, res);
+    if (result.errors.isNotEmpty) {
+      return EvaluationValidationError(result.errors, result.values);
     }
-    return EvaluationSuccess(res);
+    return EvaluationSuccess(result.values);
   }
 }
 

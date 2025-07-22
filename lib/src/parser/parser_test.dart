@@ -42,7 +42,7 @@ void main() {
 # comment3
 VAR = 'ss'
 VAR2 = 'ss'
-    """;
+      """;
 
     final lexer = Lexer(input);
     final parser = Parser(lexer);
@@ -54,13 +54,19 @@ VAR2 = 'ss'
     expect(program.lines.length, equals(2));
   });
 
-  test("description", () {
+  test("test groups", () {
     final input = """
 VAR = 12
 VAR = 12
 \$VAR3 = VAR
-[table] # some comment
-VAR = "SOMETHINGS"
+group { # some comment
+  VAR = "SOMETHINGS"
+  VAR2 = "SOMETHINGS"
+  group {
+    VAR = "SOMETHINGS"
+    VAR2 = "SOMETHINGS"
+  }
+}
     """;
 
     final lexer = Lexer(input, "path/to/file");
@@ -69,7 +75,7 @@ VAR = "SOMETHINGS"
     final program = parser.parseProgram();
     final errors = parser.errors;
 
-    expect(errors.length, equals(0));
+    expect(errors.length, equals(0), reason: errors.join("\n"));
     expect(
       program,
       equals(
@@ -77,18 +83,25 @@ VAR = "SOMETHINGS"
           AssigmentLine(Identifier("VAR"), Number(12)),
           AssigmentLine(Identifier("VAR"), Number(12)),
           DeclarationLine(Identifier("VAR3"), Identifier("VAR")),
-          TableHeaderLine(Identifier("table")),
-          AssigmentLine(Identifier("VAR"), InterpolableStringLiteral("SOMETHINGS")),
+          Block(Identifier("group"), [
+            AssigmentLine(Identifier("VAR"), InterpolableStringLiteral("SOMETHINGS")),
+            AssigmentLine(Identifier("VAR2"), InterpolableStringLiteral("SOMETHINGS")),
+            Block(Identifier("group"), [
+              AssigmentLine(Identifier("VAR"), InterpolableStringLiteral("SOMETHINGS")),
+              AssigmentLine(Identifier("VAR2"), InterpolableStringLiteral("SOMETHINGS")),
+            ]),
+          ]),
         ]),
       ),
     );
     expect(
       program.lines[3].token.pos,
       Position(
-        start: Cursor(lineNumber: 3, offset: 1),
-        end: Cursor(lineNumber: 3, offset: 6),
+        start: Cursor(lineNumber: 3, offset: 0),
+        end: Cursor(lineNumber: 3, offset: 5),
         filepath: "path/to/file",
       ),
+      reason: "${program.lines[3]}",
     );
   });
 

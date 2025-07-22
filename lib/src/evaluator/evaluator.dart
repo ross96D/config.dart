@@ -1,8 +1,6 @@
-import 'package:config/config.dart';
 import 'package:config/src/ast/ast.dart';
 import 'package:config/src/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
-
 
 sealed class Value<T extends Object> {
   final T value;
@@ -110,34 +108,36 @@ second occurrence: $filepath:${lineSecond + 1}:0
   int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond, filepath]);
 }
 
-class TableNameDefinedAsKeyError extends EvaluationError {
+class BlockNameDefinedAsKeyError extends EvaluationError {
   // TODO final Position tablePosition;
-  final int line;
+  final int keyLine;
+  final int blockLine;
   final String filepath;
   final String tableName;
 
-  TableNameDefinedAsKeyError(this.tableName, this.line, this.filepath);
+  BlockNameDefinedAsKeyError(this.tableName, this.keyLine, this.blockLine, this.filepath);
 
   @override
   String error() {
     return """
-A key with the same name as the table is already defined, table $tableName could not be created
-$filepath:${line + 1}:0
+A key with the same name as the block is already defined, table $tableName could not be created
+key defined here -> $filepath:${keyLine + 1}:0
+block defined here -> $filepath:${blockLine + 1}:0
 """;
   }
 
   @override
   String toString() {
-    return "TableNameDefinedAsKeyError(tableName: $tableName, line: $line, filepath: $filepath)";
+    return "BlockNameDefinedAsKeyError(tableName: $tableName, keylLine: $keyLine, blockLine: $blockLine, filepath: $filepath)";
   }
 
   @override
-  bool operator ==(covariant TableNameDefinedAsKeyError other) {
-    return line == other.line && tableName == other.tableName && filepath == filepath;
+  bool operator ==(covariant BlockNameDefinedAsKeyError other) {
+    return keyLine == other.keyLine && blockLine == other.blockLine && tableName == other.tableName && filepath == filepath;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, tableName, filepath]);
+  int get hashCode => Object.hashAll([keyLine, blockLine, tableName, filepath]);
 }
 
 class KeyNotInSchemaError extends EvaluationError {
@@ -244,296 +244,311 @@ class RequiredKeyIsMissing extends EvaluationError {
   int get hashCode => keyName.hashCode;
 }
 
-class Evaluator {
-  final Program program;
-  final Schema? schema;
-  List<String> _currentScope;
+class _BlockEvaluation {
+  final List<EvaluationError> errors;
+  final MapValue result;
 
-  bool _programEvaluated = false;
-  late MapValue result;
-  late List<EvaluationError> errors;
+  _BlockEvaluation(this.result, this.errors);
+}
 
-  final Map<String, Value> declarations = {};
+class _BlockEvaluator {
+  final Map<String, Value> _parentDeclarations;
+  final Map<String, Value> _ownDeclarations;
 
-  Evaluator(this.program, [this.schema]) : _currentScope = [];
+  Map<String, Value> get allDeclarations => Map.from(_parentDeclarations)..addAll(_ownDeclarations);
 
-  bool _assign(String key, Value value) {
-    MapValue scopeToSet = result;
+  final Block block;
 
-    for (final scope in _currentScope) {
-      if (result.value.containsKey(scope)) {
-        if (result.value[scope] is! MapValue) {
-          errors.add(TableNameDefinedAsKeyError(scope, result.value[scope]!.line, value.filepath));
-          return false;
-        }
-      } else {
-        // TODO this should not be created here, instead should be created when
-        // the tableHeader is found. In here we have no way to get the position
-        //
-        // If we do as above then having !result.value.containsKey(scope) is an invalid state
-        result.value[scope] = MapValue.empty();
-      }
+  _BlockEvaluator(this.block, [Map<String, Value>? declarations])
+    : _parentDeclarations = declarations ?? {},
+      _ownDeclarations = {};
 
-      scopeToSet = result.value[scope] as MapValue;
-    }
-    if (scopeToSet.value.containsKey(key)) {
-      errors.add(DuplicatedKeyError(key, scopeToSet.value[key]!.line, value.line, value.filepath));
-      return false;
-    }
-    scopeToSet.value[key] = value;
-    return true;
-  }
+  _BlockEvaluation eval() {
+    final result = MapValue.empty();
+    final errors = <EvaluationError>[];
 
-  Map<String, dynamic> eval() {
-    if (_programEvaluated) {
-      throw UnimplementedError("TODO");
-    } else {
-      _programEvaluated = true;
-    }
-    result = MapValue.empty();
-    errors = [];
-
-    for (final line in program.lines) {
+    for (final line in block.lines) {
       switch (line) {
         case AssigmentLine():
-          final value = _resolveExpr(line.expr);
-          // if assign was succesfully performed add value to declarations
-          if (_assign(line.identifer.value, value)) {
-            declarations[line.identifer.value] = value;
+          final key = line.identifer.value;
+          final value = _resolveExpr(line.expr, allDeclarations);
+          if (result.value.containsKey(key)) {
+            final lineFirst = result.value[key]!.line;
+            errors.add(DuplicatedKeyError(key, lineFirst, value.line, value.filepath));
           }
+          result[key] = value;
+
         case DeclarationLine():
-          declarations[line.identifer.value] = _resolveExpr(line.expr);
-        case TableHeaderLine():
-          _currentScope = [line.identifer.value];
+          _ownDeclarations[line.identifer.value] = _resolveExpr(line.expr, allDeclarations);
+
+        case Block():
+          final key = line.identifer.value;
+          if (result.value.containsKey(key)) {
+            final keyLineNum = result.value[key]!.line;
+            final lineNum = line.token.pos!.start.lineNumber;
+            final filepath = line.token.pos!.filepath;
+            errors.add(BlockNameDefinedAsKeyError(key, keyLineNum, lineNum, filepath));
+            break;
+          }
+          final evaluator = _BlockEvaluator(line, allDeclarations);
+          final res = evaluator.eval();
+          errors.addAll(res.errors);
+          result[key] = res.result;
+          _ownDeclarations[key] = MapValue(
+            evaluator._ownDeclarations,
+            line.token.pos!.start.lineNumber,
+            line.token.pos!.filepath,
+          );
       }
     }
 
-    late final Map<String, dynamic> response;
+    return _BlockEvaluation(result, errors);
+  }
+}
+
+class _EvaluationResult {
+  final Map<String, dynamic> values;
+  final List<EvaluationError> errors;
+  const _EvaluationResult(this.values, this.errors);
+}
+
+
+abstract final class Evaluator {
+  static _EvaluationResult eval(
+    Program program, {
+    Map<String, Value>? declarations,
+    Schema? schema,
+  }) {
+    declarations ??= {};
+    final block = program.toBlock();
+
+    final blockEvaluator = _BlockEvaluator(block, declarations);
+    final evaluation = blockEvaluator.eval();
+
+    Map<String, dynamic> values = {};
     if (schema != null) {
-      response = {};
-      schema!.apply(response, result, errors);
+      schema.apply(values, evaluation.result, evaluation.errors);
     } else {
-      response = result.toMap();
+      values = evaluation.result.toMap();
     }
-
-    return response;
+    return _EvaluationResult(values, evaluation.errors);
   }
+}
 
-  Value _resolveExpr(Expression expr) {
-    final line = expr.token.pos!.start.lineNumber;
-    final filepath = expr.token.pos!.filepath;
-    switch (expr) {
-      case Identifier():
-        // Should we fail here??
-        return (declarations[expr.value] ?? StringValue("", -1, "")).copyWith(
-          line: line,
-          filepath: filepath,
-        );
-      case Number():
-        return NumberValue(expr.value, line, filepath);
-      case StringLiteral():
-        return StringValue(expr.value, line, filepath);
-      case InterpolableStringLiteral():
-        return StringValue(_resolveInterpolableString(expr.value), line, filepath);
-      case Boolean():
-        return BooleanValue(expr.value, line, filepath);
-
-      case PrefixExpression():
-        return _resolvePrefixExpr(expr);
-      case InfixExpression():
-        return _infixPrefixExpr(expr);
-    }
-  }
-
-  Value _resolvePrefixExpr(PrefixExpression prefexpr) {
-    final rightValue = _resolveExpr(prefexpr.expr);
-    switch (prefexpr.op) {
-      case Operator.Minus:
-        return switch (rightValue) {
-          NumberValue v => NumberValue(-1 * v.value, v.line, v.filepath),
-          _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
-        };
-      case Operator.Bang:
-        return switch (rightValue) {
-          BooleanValue v => BooleanValue(!v.value, v.line, v.filepath),
-          _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
-        };
-      default:
-        throw StateError("unreachable");
-    }
-  }
-
-  Value _infixPrefixExpr(InfixExpression expr) {
-    final left = _resolveExpr(expr.right);
-    final rigth = _resolveExpr(expr.left);
-    return switch (expr.op) {
-      Operator.Mult => _multiply(left, rigth, expr.token),
-      Operator.Div => _divide(left, rigth, expr.token),
-      Operator.Plus => _add(left, rigth, expr.token),
-      Operator.Minus => _sub(left, rigth, expr.token),
-      Operator.Equals => _eq(left, rigth),
-      Operator.NotEquals => _neq(left, rigth),
-      Operator.GreatThan => _gt(left, rigth, expr.token),
-      Operator.GreatOrEqThan => _gte(left, rigth, expr.token),
-      Operator.LessThan => _lt(left, rigth, expr.token),
-      Operator.LessOrEqThan => _lte(left, rigth, expr.token),
-      Operator.Bang => throw StateError("unreachable"),
-    };
-  }
-
-  Value _multiply(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Mult,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
+Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
+  final line = expr.token.pos!.start.lineNumber;
+  final filepath = expr.token.pos!.filepath;
+  switch (expr) {
+    case Identifier():
+      // Should we fail here??
+      return (declarations[expr.value] ?? StringValue("", -1, "")).copyWith(
+        line: line,
+        filepath: filepath,
       );
-    }
-    return NumberValue(left.value * right.value, left.line, left.filepath);
-  }
+    case Number():
+      return NumberValue(expr.value, line, filepath);
+    case StringLiteral():
+      return StringValue(expr.value, line, filepath);
+    case InterpolableStringLiteral():
+      return StringValue(_resolveInterpolableString(expr.value, declarations), line, filepath);
+    case Boolean():
+      return BooleanValue(expr.value, line, filepath);
 
-  Value _divide(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Div,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return NumberValue(left.value / right.value, left.line, left.filepath);
+    case PrefixExpression():
+      return _resolvePrefixExpr(expr, declarations);
+    case InfixExpression():
+      return _infixPrefixExpr(expr, declarations);
   }
+}
 
-  Value _add(Value left, Value right, Token token) {
-    if (left is NumberValue && right is NumberValue) {
-      return NumberValue(left.value + right.value, left.line, left.filepath);
-    }
-    if (left is StringValue && right is StringValue) {
-      return StringValue(left.value + right.value, left.line, left.filepath);
-    }
+Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarations) {
+  final rightValue = _resolveExpr(prefexpr.expr, declarations);
+  switch (prefexpr.op) {
+    case Operator.Minus:
+      return switch (rightValue) {
+        NumberValue v => NumberValue(-1 * v.value, v.line, v.filepath),
+        _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
+      };
+    case Operator.Bang:
+      return switch (rightValue) {
+        BooleanValue v => BooleanValue(!v.value, v.line, v.filepath),
+        _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
+      };
+    default:
+      throw StateError("unreachable");
+  }
+}
+
+Value _infixPrefixExpr(InfixExpression expr, Map<String, Value> declarations) {
+  final left = _resolveExpr(expr.right, declarations);
+  final rigth = _resolveExpr(expr.left, declarations);
+  return switch (expr.op) {
+    Operator.Mult => _multiply(left, rigth, expr.token),
+    Operator.Div => _divide(left, rigth, expr.token),
+    Operator.Plus => _add(left, rigth, expr.token),
+    Operator.Minus => _sub(left, rigth, expr.token),
+    Operator.Equals => _eq(left, rigth),
+    Operator.NotEquals => _neq(left, rigth),
+    Operator.GreatThan => _gt(left, rigth, expr.token),
+    Operator.GreatOrEqThan => _gte(left, rigth, expr.token),
+    Operator.LessThan => _lt(left, rigth, expr.token),
+    Operator.LessOrEqThan => _lte(left, rigth, expr.token),
+    Operator.Bang => throw StateError("unreachable"),
+  };
+}
+
+Value _multiply(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
     throw InfixOperationError(
       left,
-      Operator.Plus,
+      Operator.Mult,
       right,
       token.pos!.start.lineNumber,
       token.pos!.filepath,
     );
   }
+  return NumberValue(left.value * right.value, left.line, left.filepath);
+}
 
-  Value _sub(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Minus,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return NumberValue(left.value - right.value, left.line, left.filepath);
+Value _divide(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Div,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
   }
+  return NumberValue(left.value / right.value, left.line, left.filepath);
+}
 
-  Value _eq(Value left, Value right) {
-    return BooleanValue(left.value == right.value, left.line, left.filepath);
+Value _add(Value left, Value right, Token token) {
+  if (left is NumberValue && right is NumberValue) {
+    return NumberValue(left.value + right.value, left.line, left.filepath);
   }
-
-  Value _neq(Value left, Value right) {
-    return BooleanValue(left.value != right.value, left.line, left.filepath);
+  if (left is StringValue && right is StringValue) {
+    return StringValue(left.value + right.value, left.line, left.filepath);
   }
+  throw InfixOperationError(
+    left,
+    Operator.Plus,
+    right,
+    token.pos!.start.lineNumber,
+    token.pos!.filepath,
+  );
+}
 
-  Value _gt(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Minus,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return BooleanValue(left.value > right.value, left.line, left.filepath);
+Value _sub(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Minus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
   }
+  return NumberValue(left.value - right.value, left.line, left.filepath);
+}
 
-  Value _gte(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Minus,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return BooleanValue(left.value >= right.value, left.line, left.filepath);
+Value _eq(Value left, Value right) {
+  return BooleanValue(left.value == right.value, left.line, left.filepath);
+}
+
+Value _neq(Value left, Value right) {
+  return BooleanValue(left.value != right.value, left.line, left.filepath);
+}
+
+Value _gt(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Minus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
   }
+  return BooleanValue(left.value > right.value, left.line, left.filepath);
+}
 
-  Value _lt(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Minus,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return BooleanValue(left.value < right.value, left.line, left.filepath);
+Value _gte(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Minus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
   }
+  return BooleanValue(left.value >= right.value, left.line, left.filepath);
+}
 
-  Value _lte(Value left, Value right, Token token) {
-    if (left is! NumberValue || right is! NumberValue) {
-      throw InfixOperationError(
-        left,
-        Operator.Minus,
-        right,
-        token.pos!.start.lineNumber,
-        token.pos!.filepath,
-      );
-    }
-    return BooleanValue(left.value <= right.value, left.line, left.filepath);
+Value _lt(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Minus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
   }
+  return BooleanValue(left.value < right.value, left.line, left.filepath);
+}
 
-  String _resolveInterpolableString(String str) {
-    StringBuffer resp = StringBuffer();
-    final codeUnits = str.codeUnits;
-    for (int i = 0; i < codeUnits.length; i++) {
-      final char = codeUnits[i];
-      if (char == "\$".codeUnitAt(0)) {
+Value _lte(Value left, Value right, Token token) {
+  if (left is! NumberValue || right is! NumberValue) {
+    throw InfixOperationError(
+      left,
+      Operator.Minus,
+      right,
+      token.pos!.start.lineNumber,
+      token.pos!.filepath,
+    );
+  }
+  return BooleanValue(left.value <= right.value, left.line, left.filepath);
+}
+
+String _resolveInterpolableString(String str, Map<String, Value> declarations) {
+  StringBuffer resp = StringBuffer();
+  final codeUnits = str.codeUnits;
+  for (int i = 0; i < codeUnits.length; i++) {
+    final char = codeUnits[i];
+    if (char == "\$".codeUnitAt(0)) {
+      i += 1;
+      final start = i;
+      while (i < codeUnits.length && (_isDigit(codeUnits[i]) || _isLetterOr_(codeUnits[i]))) {
         i += 1;
-        final start = i;
-        while (i < codeUnits.length && (_isDigit(codeUnits[i]) || _isLetterOr_(codeUnits[i]))) {
-          i += 1;
-        }
-        final end = i;
-        final name = str.substring(start, end);
-
-        if (name.isEmpty) {
-          resp.writeCharCode(codeUnits[i]);
-          continue;
-        }
-        assert(name[name.length - 1] != " ");
-
-        final value = declarations[name];
-        if (value != null) {
-          resp.write(switch (value) {
-            NumberValue() => value.value.toString(),
-            StringValue() => value.value,
-            BooleanValue() => value.value.toString(),
-            MapValue() => throw UnimplementedError(),
-          });
-        }
-        if (i < codeUnits.length) {
-          resp.writeCharCode(codeUnits[i]);
-        }
-      } else {
-        resp.writeCharCode(char);
       }
+      final end = i;
+      final name = str.substring(start, end);
+
+      if (name.isEmpty) {
+        resp.writeCharCode(codeUnits[i]);
+        continue;
+      }
+      assert(name[name.length - 1] != " ");
+
+      final value = declarations[name];
+      if (value != null) {
+        resp.write(switch (value) {
+          NumberValue() => value.value.toString(),
+          StringValue() => value.value,
+          BooleanValue() => value.value.toString(),
+          MapValue() => throw UnimplementedError(),
+        });
+      }
+      if (i < codeUnits.length) {
+        resp.writeCharCode(codeUnits[i]);
+      }
+    } else {
+      resp.writeCharCode(char);
     }
-    return resp.toString();
   }
+  return resp.toString();
 }
 
 bool _isDigit(int char) {
