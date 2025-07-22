@@ -74,21 +74,21 @@ class EnumField<T extends Enum> extends Field<String, T> {
 }
 
 class TableSchema {
-  final Map<String, Field> _fields;
-  final Map<String, TableSchema> _tables;
+  final Map<String, Field> fields;
+  final Map<String, TableSchema> tables;
 
   TableSchema({List<Field>? fields, Map<String, TableSchema>? tables})
-    : _fields = fields != null ? Map.fromEntries(fields.map((e) => MapEntry(e.name, e))) : {},
-      _tables = tables ?? {};
+    : fields = fields != null ? Map.fromEntries(fields.map((e) => MapEntry(e.name, e))) : {},
+      tables = tables ?? {};
 
   void apply(Map<String, dynamic> response, MapValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
-      if (!_fields.containsKey(entry.key)) {
+      if (!fields.containsKey(entry.key)) {
         errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
       }
     }
 
-    for (final entry in _fields.entries) {
+    for (final entry in fields.entries) {
       final field = entry.value;
       final key = entry.key;
 
@@ -122,7 +122,7 @@ class TableSchema {
       }
     }
 
-    for (final entry in _tables.entries) {
+    for (final entry in tables.entries) {
       final table = entry.value;
       final key = entry.key;
 

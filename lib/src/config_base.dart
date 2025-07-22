@@ -1,14 +1,9 @@
 import 'dart:io';
 
-import 'package:config/config.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/schema.dart';
-
-class EvaluationResult {
-  final Map<String, dynamic> values;
-  final List<EvaluationError> errors;
-  const EvaluationResult(this.values, this.errors);
-}
+import 'package:config/src/evaluator/evaluator.dart';
+import 'package:config/src/parser/parser.dart';
 
 class ConfigurationParser {
   static (EvaluationResult?, List<ParseError>?) parseFromFile(
@@ -23,12 +18,14 @@ class ConfigurationParser {
     if (parser.errors.isNotEmpty) {
       return (null, parser.errors);
     }
-    final evaluator = Evaluator(program);
-    evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
+    final result = Evaluator.eval(
+      program,
+      schema: schema,
+      declarations: predefinedDeclarations.map(
+        (key, value) => MapEntry(key, StringValue(value, -1, "")),
+      ),
     );
-    final res = evaluator.eval();
-    return (EvaluationResult(res, evaluator.errors), null);
+    return (result, null);
   }
 
   static (EvaluationResult?, List<ParseError>?) parseFromString(
@@ -43,21 +40,25 @@ class ConfigurationParser {
     if (parser.errors.isNotEmpty) {
       return (null, parser.errors);
     }
-    final evaluator = Evaluator(program, schema);
-    evaluator.declarations.addAll(
-      predefinedDeclarations.map((k, v) => MapEntry(k, StringValue(v, -1, ""))),
+    final result = Evaluator.eval(
+      program,
+      schema: schema,
+      declarations: predefinedDeclarations.map(
+        (key, value) => MapEntry(key, StringValue(value, -1, "")),
+      ),
     );
-    final res = evaluator.eval();
-    return (EvaluationResult(res, evaluator.errors), null);
+    return (result, null);
   }
 }
 
 sealed class Result<T extends Object> {}
+
 class Success<T extends Object> extends Result<T> {
   final Type type;
   final T value;
   Success(this.value) : type = T;
 }
+
 class Failure<T extends ValidationError, __ extends Object> extends Result<__> {
   final Type type;
   final T value;

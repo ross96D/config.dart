@@ -81,24 +81,47 @@ class DeclarationLine extends Line {
   }
 }
 
-// [table]
-class TableHeaderLine extends Line {
+class Block extends Line {
   final Identifier identifer;
+  final List<Line> lines;
 
-  TableHeaderLine(this.identifer, [super.token]);
-
-  @override
-  bool operator ==(Object other) {
-    return other is TableHeaderLine && identifer == other.identifer;
-  }
-
-  @override
-  int get hashCode => identifer.hashCode;
+  Block(this.identifer, this.lines, [super.token]);
 
   @override
   String toString() {
-    return "[$identifer]";
+    final buffer = StringBuffer();
+    buffer.write(identifer.toString());
+    buffer.write(" {\n");
+    for (final line in lines) {
+      final linesplit = line.toString().split("\n");
+      for (final split in linesplit) {
+        buffer.write("\t$split");
+        buffer.write("\n");
+      }
+    }
+    buffer.write("}");
+
+    return buffer.toString();
   }
+
+  @override
+  bool operator ==(covariant Block other) {
+    if (identifer != other.identifer) {
+      return false;
+    }
+    if (lines.length != other.lines.length) {
+      return false;
+    }
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i] != other.lines[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([identifer, ...lines]);
 }
 
 class Identifier extends _GenericExpression<String> {
@@ -211,6 +234,11 @@ class Program {
       }
     }
     return true;
+  }
+
+  Block toBlock() {
+    final token = Token(type: TokenType.Identifier, literal: "", pos: Position.t(0, 0, 0, 0, ""));
+    return Block(Identifier("", token), lines, token);
   }
 
   @override

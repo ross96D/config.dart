@@ -165,7 +165,7 @@ class Token {
 
   const Token({required this.type, required this.literal, this.pos});
 
-  factory Token.empty() => Token(literal: "", type: TokenType.Illegal);
+  factory Token.empty() => Token(literal: "", type: TokenType.Illegal, pos: null);
 
   @override
   bool operator ==(Object other) {
