@@ -73,10 +73,10 @@ class ConfigurationParser {
         (key, value) => MapEntry(key, StringValue(value, -1, "")),
       ),
     );
-    if (result.errors.isNotEmpty) {
-      return EvaluationValidationError(result.errors, result.values);
+    if (result.$2.isNotEmpty) {
+      return EvaluationValidationError(result.$2, result.$1);
     }
-    return EvaluationSuccess(result.values);
+    return EvaluationSuccess(result.$1);
   }
 }
 

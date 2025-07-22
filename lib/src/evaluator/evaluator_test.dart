@@ -34,7 +34,7 @@ table2 {
     final result = Evaluator.eval(program);
 
     expect(
-      result.values,
+      result.$1,
       equals({
         "VAR1": "value",
         "VAR2": 12,
@@ -60,10 +60,10 @@ VAR3 = 12 / 12
 
     final evaluator = Evaluator.eval(program);
 
-    expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join('\n'));
+    expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
 
     expect(
-      evaluator.values,
+      evaluator.$1,
       equals({"VAR1": 125.0, "VAR2": 120, "VAR3": 1}),
       reason: program.toString(),
     );
@@ -97,10 +97,10 @@ VAR2 = 2
 
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.errors.length, equals(0), reason: evaluator.errors.join("\n"));
-    expect(evaluator.values, equals({"VAR1": "value", "VAR2": 2.0, "VAR3": null}));
+    expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join("\n"));
+    expect(evaluator.$1, equals({"VAR1": "value", "VAR2": 2.0, "VAR3": null}));
 
-    expect(evaluator.errors, isEmpty);
+    expect(evaluator.$2, isEmpty);
   });
 
   test("schema failed", () {
@@ -126,8 +126,8 @@ VAR2 = 2
     // schema.field<String>("VAR1", validator: (v) => v != 'value' ? NotEqualValidationError() : null);
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<NotEqualValidationError>());
+    expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<NotEqualValidationError>());
   });
 
   test("schema default value", () {
@@ -141,7 +141,7 @@ VAR2 = 2
     final schema = Schema(fields: [StringField("VAR1", defaultTo: "VALUE")]);
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.values, equals({"VAR1": "VALUE"}));
+    expect(evaluator.$1, equals({"VAR1": "VALUE"}));
   });
 
   test("schema default value", () {
@@ -154,8 +154,8 @@ VAR2 = 2
     final schema = Schema(fields: [StringField("VAR1")]);
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
   });
 
   test("table name already define as variable", () {
@@ -171,9 +171,9 @@ TABLE {
 
     final evaluator = Evaluator.eval(program);
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<BlockNameDefinedAsKeyError>());
-    expect(evaluator.errors[0], equals(BlockNameDefinedAsKeyError("TABLE", 0, 1, "/path/to/file")));
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<BlockNameDefinedAsKeyError>());
+    expect(evaluator.$2[0], equals(BlockNameDefinedAsKeyError("TABLE", 0, 1, "/path/to/file")));
   });
 
   test("duplicated key error", () {
@@ -187,9 +187,9 @@ VAR = 12
 
     final evaluator = Evaluator.eval(program);
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<DuplicatedKeyError>());
-    expect(evaluator.errors[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<DuplicatedKeyError>());
+    expect(evaluator.$2[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
   });
 
   test("key not in schema", () {
@@ -201,9 +201,9 @@ VAR = 12
 
     final evaluator = Evaluator.eval(program, schema: Schema());
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<KeyNotInSchemaError>());
-    expect(evaluator.errors[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<KeyNotInSchemaError>());
+    expect(evaluator.$2[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
   });
 
   test("type conflict", () {
@@ -215,10 +215,10 @@ VAR = 12
 
     final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
 
-    expect(evaluator.errors.length, greaterThanOrEqualTo(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<ConflictTypeError>());
+    expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<ConflictTypeError>());
     expect(
-      evaluator.errors[0],
+      evaluator.$2[0],
       equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)),
     );
   });
@@ -232,9 +232,9 @@ VAR = 12
 
     final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
 
-    expect(evaluator.errors.length, equals(1), reason: evaluator.errors.join('\n'));
-    expect(evaluator.errors[0], isA<RequiredKeyIsMissing>());
-    expect(evaluator.errors[0], equals(RequiredKeyIsMissing("VAR")));
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
+    expect(evaluator.$2[0], equals(RequiredKeyIsMissing("VAR")));
   });
 }
 

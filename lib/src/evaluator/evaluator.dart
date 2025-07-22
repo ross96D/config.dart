@@ -306,15 +306,8 @@ class _BlockEvaluator {
   }
 }
 
-class _EvaluationResult {
-  final Map<String, dynamic> values;
-  final List<EvaluationError> errors;
-  const _EvaluationResult(this.values, this.errors);
-}
-
-
 abstract final class Evaluator {
-  static _EvaluationResult eval(
+  static (Map<String, dynamic> values, List<EvaluationError> errors) eval(
     Program program, {
     Map<String, Value>? declarations,
     Schema? schema,
@@ -331,7 +324,7 @@ abstract final class Evaluator {
     } else {
       values = evaluation.result.toMap();
     }
-    return _EvaluationResult(values, evaluation.errors);
+    return (values, evaluation.errors);
   }
 }
 
