@@ -91,12 +91,7 @@ class EnumField<T extends Enum> extends Field<String, T> {
 
   final List<T> values;
 
-  const EnumField(
-    this.name,
-    this.values, {
-    this.defaultTo,
-    this.nullable = false,
-  });
+  const EnumField(this.name, this.values, {this.defaultTo, this.nullable = false});
 
   @override
   ValidatorResult<T> validator(String value) {
@@ -112,6 +107,26 @@ class EnumField<T extends Enum> extends Field<String, T> {
     }
     return ValidatorError(InvalidStringToEnum());
   }
+}
+
+/// Class that receieves an untyped list object as parameter
+/// The object can have type of double, string, bool or list
+class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
+  @override
+  final String name;
+
+  @override
+  final List<T>? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final MapperFn<List<Object>, List<T>> tranformFn;
+
+  const UntypedListField(this.name, this.tranformFn, {this.defaultTo, this.nullable = false});
+
+  @override
+  ValidatorResult<List<T>> validator(List<Object> value) => tranformFn(value);
 }
 
 class TableSchema {
