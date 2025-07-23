@@ -210,6 +210,32 @@ class InfixExpression extends Expression {
   int get hashCode => Object.hashAll([left, op, right]);
 }
 
+class Array extends Expression {
+  final List<Expression> list;
+  Array(this.list, [super.token]);
+
+  @override
+  String toString() {
+    return "[${list.join(", ")}]";
+  }
+
+  @override
+  bool operator ==(covariant Array other) {
+    if (list.length != other.list.length) {
+      return false;
+    }
+    for (int i = 0; i < list.length; i++) {
+      if (list[i] != other.list[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(list);
+}
+
 class Program {
   final List<Line> lines;
   final String filepath;

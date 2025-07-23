@@ -155,7 +155,7 @@ class Parser {
       case TokenType.Illegal:
         errors.add(IlegalTokenFound(_currenToken, lexer.input));
         return null;
-      case TokenType.Assign:
+      case TokenType.Assign || TokenType.Comma:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -213,6 +213,12 @@ class Parser {
 
   _Precedence _currentPrecedence() {
     return _precedences[_currenToken.type] ?? _Precedence.lowest;
+  }
+
+  void _ignoreWhilePeek(TokenType type) {
+    while(_peekToken.type == type) {
+      _nextToken();
+    }
   }
 
   Line? _parseIdentifierStart() {
@@ -372,6 +378,51 @@ class Parser {
     }
     return expr;
   }
+
+  static Array _parseArray(Parser parser) {
+    final token = parser._currenToken;
+    final list = _parseExpressionList(parser, TokenType.RigthBracket);
+
+    return Array(list, token);
+  }
+
+  static List<Expression> _parseExpressionList(Parser parser, TokenType end) {
+    final list = <Expression>[];
+    parser._ignoreWhilePeek(TokenType.NewLine);
+
+    if (parser._peekToken.type == end) {
+      parser._nextToken();
+      return list;
+    }
+
+    parser._nextToken();
+    Expression? exp = parser._parseExpression(_Precedence.lowest);
+    if (exp == null) {
+      return list;
+    }
+    list.add(exp);
+
+    while (parser._peekToken.type == TokenType.Comma) {
+      parser._nextToken();// advance last token of expression
+      parser._ignoreWhilePeek(TokenType.NewLine); // ignore all new line tokens (allow multiline statements)
+      // this allow trailing comma
+      if (parser._peekToken.type == end) {
+        break;
+      }
+      parser._nextToken(); // get to the actual token of the expression so _parseExpression works
+
+
+      exp = parser._parseExpression(_Precedence.lowest);
+      if (exp == null) {
+        return list;
+      }
+      list.add(exp);
+    }
+
+    parser._ignoreWhilePeek(TokenType.NewLine);
+    parser._expectPeek(end);
+    return list;
+  }
 }
 
 enum _Precedence {
@@ -409,6 +460,7 @@ const _prefixParseFn = {
   TokenType.Bang: Parser._parsePrefixExpression,
   TokenType.Minus: Parser._parsePrefixExpression,
   TokenType.LeftParent: Parser._parseGroupExpression,
+  TokenType.LeftBracket: Parser._parseArray,
 };
 
 const _infixParseFn = {

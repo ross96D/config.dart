@@ -54,6 +54,7 @@ enum TokenType {
   Illegal,
   Eof,
   NewLine,
+  Comma,
   Comment,
 
   /// Symbol: `{`
@@ -195,6 +196,7 @@ class Token {
       TokenType.Illegal => "**ILLEGAL**",
       TokenType.Eof => "**EOF**",
       TokenType.NewLine => "\n",
+      TokenType.Comma => ",",
       TokenType.Dollar => "\$",
       TokenType.Assign => "=",
       TokenType.LeftBrace => "{",

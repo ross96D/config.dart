@@ -54,7 +54,7 @@ VAR2 = 'ss'
     expect(program.lines.length, equals(2));
   });
 
-  test("test groups", () {
+  test("test groups and arrays", () {
     final input = """
 VAR = 12
 VAR = 12
@@ -67,6 +67,18 @@ group { # some comment
     VAR2 = "SOMETHINGS"
   }
 }
+array = [1, 2 + 3, 3 * VAR3]
+array2 = [1]
+array3 = [
+  1,
+  2,
+  3
+]
+array4 = [
+  1,
+  2,
+  3,
+]
     """;
 
     final lexer = Lexer(input, "path/to/file");
@@ -91,6 +103,17 @@ group { # some comment
               AssigmentLine(Identifier("VAR2"), InterpolableStringLiteral("SOMETHINGS")),
             ]),
           ]),
+          AssigmentLine(
+            Identifier("array"),
+            Array([
+              Number(1),
+              InfixExpression(Number(2), Operator.Plus, Number(3)),
+              InfixExpression(Number(3), Operator.Mult, Identifier("VAR3")),
+            ]),
+          ),
+          AssigmentLine(Identifier("array2"), Array([Number(1)])),
+          AssigmentLine(Identifier("array3"), Array([Number(1), Number(2), Number(3)])),
+          AssigmentLine(Identifier("array4"), Array([Number(1), Number(2), Number(3)])),
         ]),
       ),
     );

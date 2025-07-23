@@ -30,6 +30,11 @@ sealed class Value<T extends Object> {
         line ?? this.line,
         filepath ?? this.filepath,
       ),
+      ListValue v => ListValue(
+        value as List<Value>? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
     };
   }
 }
@@ -46,6 +51,18 @@ class BooleanValue extends Value<bool> {
   const BooleanValue(super.value, super.line, super.filepath);
 }
 
+class ListValue extends Value<List<Value>> {
+  const ListValue(super.value, super.line, super.filepath);
+
+  List<Object> toList() {
+    return value.map((e) => switch(e) {
+      MapValue() => e.toMap(),
+      ListValue() => e.toList(),
+      _ => e.value,
+    }).toList();
+  }
+}
+
 class MapValue extends Value<Map<String, Value>> {
   const MapValue(super.value, super.line, super.filepath);
 
@@ -55,6 +72,7 @@ class MapValue extends Value<Map<String, Value>> {
     return value.map(
       (key, value) => MapEntry(key, switch (value) {
         MapValue() => value.toMap(),
+        ListValue() => value.toList(),
         _ => value.value,
       }),
     );
@@ -133,7 +151,10 @@ block defined here -> $filepath:${blockLine + 1}:0
 
   @override
   bool operator ==(covariant BlockNameDefinedAsKeyError other) {
-    return keyLine == other.keyLine && blockLine == other.blockLine && tableName == other.tableName && filepath == filepath;
+    return keyLine == other.keyLine &&
+        blockLine == other.blockLine &&
+        tableName == other.tableName &&
+        filepath == filepath;
   }
 
   @override
@@ -351,7 +372,18 @@ Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
       return _resolvePrefixExpr(expr, declarations);
     case InfixExpression():
       return _infixPrefixExpr(expr, declarations);
+
+    case Array():
+      return _resolveArray(expr, declarations);
   }
+}
+
+ListValue _resolveArray(Array array, Map<String, Value> declarations) {
+  final list = <Value>[];
+  for (final expr in array.list) {
+    list.add(_resolveExpr(expr, declarations));
+  }
+  return ListValue(list, array.token.pos!.start.lineNumber, array.token.pos!.filepath);
 }
 
 Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarations) {
@@ -531,6 +563,8 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
           NumberValue() => value.value.toString(),
           StringValue() => value.value,
           BooleanValue() => value.value.toString(),
+          ListValue() => "[${value.value.join(", ")}]",
+          // TODO: Handle this case.
           MapValue() => throw UnimplementedError(),
         });
       }

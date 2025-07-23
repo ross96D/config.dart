@@ -23,6 +23,7 @@ table {
 
 table2 {
   VAR4 = "VAL"
+  VAR5 = [1, 3 + 4, VAR3]
 }
 
     """;
@@ -41,7 +42,7 @@ table2 {
         "VAR_BOOL1": true,
         "VAR_BOOL2": false,
         "table": {"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"},
-        "table2": {"VAR4": "VAL"},
+        "table2": {"VAR4": "VAL", "VAR5": [1, 7, 'value']},
       }),
     );
   });
