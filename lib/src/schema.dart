@@ -57,11 +57,12 @@ typedef StringField = StringFieldBase<String>;
 /// If base class is not flexible enough you can implement this class
 abstract class NumberFieldAbs<Res extends Object> extends Field<double, Res> {}
 
-class NumberFieldBase<Res extends Object> extends _SimpleField<double, Res> {
+class NumberFieldBase<Rec extends num, Res extends Object> extends _SimpleField<Rec, Res> {
   const NumberFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
 }
 
-typedef NumberField = NumberFieldBase<double>;
+typedef DoubleNumberField = NumberFieldBase<double, double>;
+typedef IntegerNumberField = NumberFieldBase<int, int>;
 
 /// If base class is not flexible enough you can implement this class
 abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {}

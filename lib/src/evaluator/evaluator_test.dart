@@ -95,8 +95,8 @@ Array = [1, 3, 5, [1, 3]]
     final schema = Schema(
       fields: [
         StringField("VAR1", validator: validator),
-        NumberField("VAR2"),
-        NumberField("VAR3", nullable: true),
+        IntegerNumberField("VAR2"),
+        IntegerNumberField("VAR3", nullable: true),
         UntypedListField("Array", transform),
       ],
     );
@@ -108,9 +108,9 @@ Array = [1, 3, 5, [1, 3]]
       evaluator.$1,
       equals({
         "VAR1": "value",
-        "VAR2": 2.0,
+        "VAR2": 2,
         "VAR3": null,
-        "Array": ['1.0', '3.0', '5.0', '[1.0, 3.0]'],
+        "Array": ['1', '3', '5', '[1, 3]'],
       }),
     );
 
@@ -223,7 +223,7 @@ VAR = 12
 
     expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<ConflictTypeError>());
-    expect(evaluator.$2[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", String, double)));
+    expect(evaluator.$2[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", String, int)));
   });
 
   test("missing required key", () {

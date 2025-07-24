@@ -45,26 +45,32 @@ void main() {
     test("positions", () {
       final input = """
 VAR = 2
+VAR = 3.0
 VAR1=VAR
 [table]
       """;
       final tests = [
         Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(0, 0, 0, 3)),
         Token(type: TokenType.Assign, literal: "=", pos: Position.t(0, 4, 0, 5)),
-        Token(type: TokenType.Number, literal: "2", pos: Position.t(0, 6, 0, 7)),
+        Token(type: TokenType.Integer, literal: "2", pos: Position.t(0, 6, 0, 7)),
         Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(0, 7, 1, 0)),
 
-        Token(type: TokenType.Identifier, literal: "VAR1", pos: Position.t(1, 0, 1, 4)),
+        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(1, 0, 1, 3)),
         Token(type: TokenType.Assign, literal: "=", pos: Position.t(1, 4, 1, 5)),
-        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(1, 5, 1, 8)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(1, 8, 2, 0)),
+        Token(type: TokenType.Double, literal: "3.0", pos: Position.t(1, 6, 1, 9)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(1, 9, 2, 0)),
 
-        Token(type: TokenType.LeftBracket, literal: "[", pos: Position.t(2, 0, 2, 1)),
-        Token(type: TokenType.Identifier, literal: "table", pos: Position.t(2, 1, 2, 6)),
-        Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(2, 6, 2, 7)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(2, 7, 3, 0)),
+        Token(type: TokenType.Identifier, literal: "VAR1", pos: Position.t(2, 0, 2, 4)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(2, 4, 2, 5)),
+        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(2, 5, 2, 8)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(2, 8, 3, 0)),
 
-        Token(type: TokenType.Eof, literal: "", pos: Position.t(3, 6)),
+        Token(type: TokenType.LeftBracket, literal: "[", pos: Position.t(3, 0, 3, 1)),
+        Token(type: TokenType.Identifier, literal: "table", pos: Position.t(3, 1, 3, 6)),
+        Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(3, 6, 3, 7)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(3, 7, 4, 0)),
+
+        Token(type: TokenType.Eof, literal: "", pos: Position.t(4, 6)),
       ];
       final lexer = Lexer(input);
       for (final expectedToken in tests) {
@@ -96,7 +102,7 @@ key4 = 32 < (42 * 21) + 12 - 10
         Token(type: TokenType.Dollar, literal: "\$"),
         Token(type: TokenType.Identifier, literal: "VAR2"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.Number, literal: "12"),
+        Token(type: TokenType.Integer, literal: "12"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Identifier, literal: "key"),
@@ -121,29 +127,29 @@ key4 = 32 < (42 * 21) + 12 - 10
 
         Token(type: TokenType.Identifier, literal: "key2"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.Number, literal: "32"),
+        Token(type: TokenType.Integer, literal: "32"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Identifier, literal: "key3"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.Number, literal: "32"),
+        Token(type: TokenType.Integer, literal: "32"),
         Token(type: TokenType.LessOrEqThan, literal: "<="),
-        Token(type: TokenType.Number, literal: "42"),
+        Token(type: TokenType.Integer, literal: "42"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Identifier, literal: "key4"),
         Token(type: TokenType.Assign, literal: "="),
-        Token(type: TokenType.Number, literal: "32"),
+        Token(type: TokenType.Integer, literal: "32"),
         Token(type: TokenType.LessThan, literal: "<"),
         Token(type: TokenType.LeftParent, literal: "("),
-        Token(type: TokenType.Number, literal: "42"),
+        Token(type: TokenType.Integer, literal: "42"),
         Token(type: TokenType.Mult, literal: "*"),
-        Token(type: TokenType.Number, literal: "21"),
+        Token(type: TokenType.Integer, literal: "21"),
         Token(type: TokenType.RigthParent, literal: ")"),
         Token(type: TokenType.Plus, literal: "+"),
-        Token(type: TokenType.Number, literal: "12"),
+        Token(type: TokenType.Integer, literal: "12"),
         Token(type: TokenType.Minus, literal: "-"),
-        Token(type: TokenType.Number, literal: "10"),
+        Token(type: TokenType.Integer, literal: "10"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Eof, literal: ""),

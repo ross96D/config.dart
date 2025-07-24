@@ -57,7 +57,7 @@ VAR2 = 'ss'
   test("test groups and arrays", () {
     final input = """
 VAR = 12
-VAR = 12
+VAR = 12.3
 \$VAR3 = VAR
 group { # some comment
   VAR = "SOMETHINGS"
@@ -92,8 +92,8 @@ array4 = [
       program,
       equals(
         Program("path/to/file", [
-          AssigmentLine(Identifier("VAR"), Number(12)),
-          AssigmentLine(Identifier("VAR"), Number(12)),
+          AssigmentLine(Identifier("VAR"), NumberInteger(12)),
+          AssigmentLine(Identifier("VAR"), NumberDouble(12.3)),
           DeclarationLine(Identifier("VAR3"), Identifier("VAR")),
           Block(Identifier("group"), [
             AssigmentLine(Identifier("VAR"), InterpolableStringLiteral("SOMETHINGS")),
@@ -106,14 +106,14 @@ array4 = [
           AssigmentLine(
             Identifier("array"),
             Array([
-              Number(1),
-              InfixExpression(Number(2), Operator.Plus, Number(3)),
-              InfixExpression(Number(3), Operator.Mult, Identifier("VAR3")),
+              NumberInteger(1),
+              InfixExpression(NumberInteger(2), Operator.Plus, NumberInteger(3)),
+              InfixExpression(NumberInteger(3), Operator.Mult, Identifier("VAR3")),
             ]),
           ),
-          AssigmentLine(Identifier("array2"), Array([Number(1)])),
-          AssigmentLine(Identifier("array3"), Array([Number(1), Number(2), Number(3)])),
-          AssigmentLine(Identifier("array4"), Array([Number(1), Number(2), Number(3)])),
+          AssigmentLine(Identifier("array2"), Array([NumberInteger(1)])),
+          AssigmentLine(Identifier("array3"), Array([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
+          AssigmentLine(Identifier("array4"), Array([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
         ]),
       ),
     );
@@ -129,7 +129,7 @@ array4 = [
   });
 
   test("parse prefix operators", () {
-    final tests = [("var = -5", Operator.Minus, 5.0), ("var = !true", Operator.Bang, true)];
+    final tests = [("var = -5", Operator.Minus, 5), ("var = !true", Operator.Bang, true)];
     for (final t in tests) {
       final lexer = Lexer(t.$1);
       final parser = Parser(lexer);
@@ -144,8 +144,9 @@ array4 = [
             AssigmentLine(
               Identifier("var"),
               PrefixExpression(t.$2, switch (t.$3) {
-                double v => Number(v),
+                double v => NumberDouble(v),
                 bool v => Boolean(v),
+                int v => NumberInteger(v),
                 _ => throw StateError("unreachable"),
               }),
             ),
@@ -157,14 +158,14 @@ array4 = [
 
   test("parse infix operators", () {
     final tests = [
-      ("var = 4 - 5", 4.0, Operator.Minus, 5.0),
-      ("var = 3 * 2", 3.0, Operator.Mult, 2.0),
-      ("var = 3 / 2", 3.0, Operator.Div, 2.0),
-      ("var = identifer + 2", "identifer", Operator.Plus, 2.0),
-      ("var = 3 < 2", 3.0, Operator.LessThan, 2.0),
-      ("var = 3 <= 2", 3.0, Operator.LessOrEqThan, 2.0),
-      ("var = 3 > 2", 3.0, Operator.GreatThan, 2.0),
-      ("var = 3 >= 2", 3.0, Operator.GreatOrEqThan, 2.0),
+      ("var = 4 - 5", 4, Operator.Minus, 5),
+      ("var = 3 * 2.3", 3, Operator.Mult, 2.3),
+      ("var = 3 / 2", 3, Operator.Div, 2),
+      ("var = identifer + 2", "identifer", Operator.Plus, 2),
+      ("var = 3.1 < 2.123", 3.1, Operator.LessThan, 2.123),
+      ("var = 3 <= 2", 3, Operator.LessOrEqThan, 2),
+      ("var = 3 > 2", 3, Operator.GreatThan, 2),
+      ("var = 3 >= 2", 3, Operator.GreatOrEqThan, 2),
     ];
     for (final t in tests) {
       final lexer = Lexer(t.$1);
@@ -181,12 +182,16 @@ array4 = [
               Identifier("var"),
               InfixExpression(
                 switch (t.$2) {
-                  double v => Number(v),
+                  double v => NumberDouble(v),
                   String v => Identifier(v),
+                  int v => NumberInteger(v),
                   _ => throw StateError("unreachable"),
                 },
                 t.$3,
-                Number(t.$4),
+                switch (t.$4) {
+                  double v => NumberDouble(v),
+                  int v => NumberInteger(v),
+                },
               ),
             ),
           ]),
@@ -205,14 +210,14 @@ array4 = [
       ("a * b / c", "((a * b) / c)"),
       ("a + b / c", "(a + (b / c))"),
       ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
-      ("5 > 4 == 3 < 4", "((5.0 > 4.0) == (3.0 < 4.0))"),
-      ("5 < 4 != 3 > 4", "((5.0 < 4.0) != (3.0 > 4.0))"),
-      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3.0 + (4.0 * 5.0)) == ((3.0 * 1.0) + (4.0 * 5.0)))"),
-      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3.0 + (4.0 * 5.0)) == ((3.0 * 1.0) + (4.0 * 5.0)))"),
+      ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+      ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
       // grouped expressions
-      ("(5 + 5) * 2", "((5.0 + 5.0) * 2.0)"),
-      ("2 / (5 + 5)", "(2.0 / (5.0 + 5.0))"),
-      ("-(5 + 5)", "(-(5.0 + 5.0))"),
+      ("(5 + 5) * 2", "((5 + 5) * 2)"),
+      ("2 / (5 + 5)", "(2 / (5 + 5))"),
+      ("-(5 + 5)", "(-(5 + 5))"),
       ("!(true == true)", "(!(true == true))"),
     ];
     for (final t in tests) {

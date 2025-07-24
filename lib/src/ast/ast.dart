@@ -142,8 +142,17 @@ class Boolean extends _GenericExpression<bool> {
   }
 }
 
-class Number extends _GenericExpression<double> {
-  Number(super.value, [super.token]);
+class NumberDouble extends _GenericExpression<double> {
+  NumberDouble(super.value, [super.token]);
+
+  @override
+  String toString() {
+    return "$value";
+  }
+}
+
+class NumberInteger extends _GenericExpression<int> {
+  NumberInteger(super.value, [super.token]);
 
   @override
   String toString() {

@@ -170,7 +170,11 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.Number || TokenType.StringLiteral || TokenType.InterpolableStringLiteral:
+      case TokenType.StringLiteral || TokenType.InterpolableStringLiteral:
+        errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
+        return null;
+
+      case TokenType.Integer || TokenType.Double:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -326,8 +330,12 @@ class Parser {
     return Identifier(parser._currenToken.literal, parser._currenToken);
   }
 
-  static Number _parseNumber(Parser parser) {
-    return Number(double.parse(parser._currenToken.literal), parser._currenToken);
+  static NumberDouble _parseNumberDouble(Parser parser) {
+    return NumberDouble(double.parse(parser._currenToken.literal), parser._currenToken);
+  }
+
+  static NumberInteger _parseNumberInteger(Parser parser) {
+    return NumberInteger(int.parse(parser._currenToken.literal), parser._currenToken);
   }
 
   static StringLiteral _parseStringLiteral(Parser parser) {
@@ -456,7 +464,8 @@ const _prefixParseFn = {
   TokenType.Identifier: Parser._parseIdentifier,
   TokenType.StringLiteral: Parser._parseStringLiteral,
   TokenType.InterpolableStringLiteral: Parser._parseInterpolableStringLiteral,
-  TokenType.Number: Parser._parseNumber,
+  TokenType.Double: Parser._parseNumberDouble,
+  TokenType.Integer: Parser._parseNumberInteger,
   TokenType.Bang: Parser._parsePrefixExpression,
   TokenType.Minus: Parser._parsePrefixExpression,
   TokenType.LeftParent: Parser._parseGroupExpression,

@@ -10,8 +10,13 @@ sealed class Value<T extends Object> {
 
   Value copyWith({int? line, T? value, String? filepath}) {
     return switch (this) {
-      NumberValue v => NumberValue(
+      NumberDoubleValue v => NumberDoubleValue(
         value as double? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      NumberIntegerValue v => NumberIntegerValue(
+        value as int? ?? v.value,
         line ?? this.line,
         filepath ?? this.filepath,
       ),
@@ -39,8 +44,16 @@ sealed class Value<T extends Object> {
   }
 }
 
-class NumberValue extends Value<double> {
+sealed class NumberValue<T extends num> extends Value<T> {
   const NumberValue(super.value, super.line, super.filepath);
+}
+
+class NumberDoubleValue extends NumberValue<double> {
+  const NumberDoubleValue(super.value, super.line, super.filepath);
+}
+
+class NumberIntegerValue extends NumberValue<int> {
+  const NumberIntegerValue(super.value, super.line, super.filepath);
 }
 
 class StringValue extends Value<String> {
@@ -58,13 +71,16 @@ class ListValue extends Value<List<Object>> {
   @override
   List<Object> get value => toList();
 
-
   List<Object> toList() {
-    return _values.map((e) => switch(e) {
-      MapValue() => e.toMap(),
-      ListValue() => e.toList(),
-      _ => e.value,
-    }).toList();
+    return _values
+        .map(
+          (e) => switch (e) {
+            MapValue() => e.toMap(),
+            ListValue() => e.toList(),
+            _ => e.value,
+          },
+        )
+        .toList();
   }
 }
 
@@ -364,14 +380,16 @@ Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
         line: line,
         filepath: filepath,
       );
-    case Number():
-      return NumberValue(expr.value, line, filepath);
+    case NumberDouble():
+      return NumberDoubleValue(expr.value, line, filepath);
     case StringLiteral():
       return StringValue(expr.value, line, filepath);
     case InterpolableStringLiteral():
       return StringValue(_resolveInterpolableString(expr.value, declarations), line, filepath);
     case Boolean():
       return BooleanValue(expr.value, line, filepath);
+    case NumberInteger():
+      return NumberIntegerValue(expr.value, line, filepath);
 
     case PrefixExpression():
       return _resolvePrefixExpr(expr, declarations);
@@ -396,7 +414,7 @@ Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarati
   switch (prefexpr.op) {
     case Operator.Minus:
       return switch (rightValue) {
-        NumberValue v => NumberValue(-1 * v.value, v.line, v.filepath),
+        NumberDoubleValue v => NumberDoubleValue(-1 * v.value, v.line, v.filepath),
         _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
       };
     case Operator.Bang:
@@ -437,7 +455,20 @@ Value _multiply(Value left, Value right, Token token) {
       token.pos!.filepath,
     );
   }
-  return NumberValue(left.value * right.value, left.line, left.filepath);
+  return switch (left) {
+    NumberDoubleValue() => switch (right) {
+      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
+      NumberIntegerValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
+    },
+    NumberIntegerValue() => switch (right) {
+      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
+      NumberIntegerValue() => NumberIntegerValue(
+        left.value * right.value,
+        left.line,
+        left.filepath,
+      ),
+    },
+  };
 }
 
 Value _divide(Value left, Value right, Token token) {
@@ -450,12 +481,37 @@ Value _divide(Value left, Value right, Token token) {
       token.pos!.filepath,
     );
   }
-  return NumberValue(left.value / right.value, left.line, left.filepath);
+  return NumberDoubleValue(left.value / right.value, left.line, left.filepath);
 }
 
 Value _add(Value left, Value right, Token token) {
   if (left is NumberValue && right is NumberValue) {
-    return NumberValue(left.value + right.value, left.line, left.filepath);
+    return switch (left) {
+      NumberDoubleValue() => switch (right) {
+        NumberDoubleValue() => NumberDoubleValue(
+          left.value + right.value,
+          left.line,
+          left.filepath,
+        ),
+        NumberIntegerValue() => NumberDoubleValue(
+          left.value + right.value,
+          left.line,
+          left.filepath,
+        ),
+      },
+      NumberIntegerValue() => switch (right) {
+        NumberDoubleValue() => NumberDoubleValue(
+          left.value + right.value,
+          left.line,
+          left.filepath,
+        ),
+        NumberIntegerValue() => NumberIntegerValue(
+          left.value + right.value,
+          left.line,
+          left.filepath,
+        ),
+      },
+    };
   }
   if (left is StringValue && right is StringValue) {
     return StringValue(left.value + right.value, left.line, left.filepath);
@@ -479,7 +535,20 @@ Value _sub(Value left, Value right, Token token) {
       token.pos!.filepath,
     );
   }
-  return NumberValue(left.value - right.value, left.line, left.filepath);
+  return switch (left) {
+    NumberDoubleValue() => switch (right) {
+      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
+      NumberIntegerValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
+    },
+    NumberIntegerValue() => switch (right) {
+      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
+      NumberIntegerValue() => NumberIntegerValue(
+        left.value - right.value,
+        left.line,
+        left.filepath,
+      ),
+    },
+  };
 }
 
 Value _eq(Value left, Value right) {
@@ -565,7 +634,8 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
       final value = declarations[name];
       if (value != null) {
         resp.write(switch (value) {
-          NumberValue() => value.value.toString(),
+          NumberDoubleValue() => value.value.toString(),
+          NumberIntegerValue() => value.value.toString(),
           StringValue() => value.value,
           BooleanValue() => value.value.toString(),
           ListValue() => "[${value.value.join(", ")}]",

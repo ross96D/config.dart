@@ -240,13 +240,14 @@ class Lexer {
 
   Token _readNumber() {
     assert(_isDigit(), "number must start with a digit");
-    final type = TokenType.Number;
+    var type = TokenType.Integer;
 
     final startCursor = _currentCursor();
     final start = _position;
     bool seePoint = false;
     while (_isDigit() || (char == 46 && !seePoint)) {
       if (char == 46) {
+        type = TokenType.Double;
         seePoint = true;
       }
       _readChar();
