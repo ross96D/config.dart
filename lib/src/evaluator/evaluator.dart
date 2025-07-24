@@ -42,6 +42,11 @@ sealed class Value<T extends Object> {
       ),
     };
   }
+
+  @override
+  String toString() {
+    return "$value";
+  }
 }
 
 sealed class NumberValue<T extends num> extends Value<T> {
@@ -221,8 +226,13 @@ class InfixOperationError extends EvaluationError {
   const InfixOperationError(this.left, this.op, this.rigth, this.line, this.filepath);
 
   @override
+  String toString() {
+    return error();
+  }
+
+  @override
   String error() {
-    return "InfixOperationError";
+    return "InfixOperationError $left ${left.runtimeType} $rigth ${rigth.runtimeType}\n$filepath:$line:0";
   }
 }
 
@@ -319,6 +329,7 @@ class _BlockEvaluator {
             errors.add(DuplicatedKeyError(key, lineFirst, value.line, value.filepath));
           }
           result[key] = value;
+          _ownDeclarations[key] = value;
 
         case DeclarationLine():
           _ownDeclarations[line.identifer.value] = _resolveExpr(line.expr, allDeclarations);
