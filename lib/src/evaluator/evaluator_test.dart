@@ -95,7 +95,7 @@ Array = [1, 3, 5, [1, 3]]
     final schema = Schema(
       fields: [
         StringField("VAR1", validator: validator),
-        IntegerNumberField("VAR2"),
+        DoubleNumberField("VAR2"),
         IntegerNumberField("VAR3", nullable: true),
         UntypedListField("Array", transform),
       ],
@@ -108,7 +108,7 @@ Array = [1, 3, 5, [1, 3]]
       evaluator.$1,
       equals({
         "VAR1": "value",
-        "VAR2": 2,
+        "VAR2": 2.0,
         "VAR3": null,
         "Array": ['1', '3', '5', '[1, 3]'],
       }),

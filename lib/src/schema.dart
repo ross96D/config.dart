@@ -157,7 +157,8 @@ class TableSchema {
         }
       } else {
         final evalValue = values[key]!;
-        if (evalValue.value.runtimeType != field.typeRec) {
+        final coerceValue = _coerceType(field.typeRec, evalValue) ;
+        if (coerceValue == null) {
           errors.add(
             ConflictTypeError(
               key,
@@ -169,13 +170,13 @@ class TableSchema {
           );
           continue;
         }
-        switch (field.validator(evalValue.value)) {
+        switch (field.validator(coerceValue.value)) {
           case ValidatorSuccess<Object>():
-            response[key] = evalValue.value;
+            response[key] = coerceValue.value;
           case ValidatorTransform result:
             response[key] = result.value;
           case ValidatorError result:
-            result.value.original = evalValue;
+            result.value.original = coerceValue;
             errors.add(result.value);
         }
       }
@@ -201,4 +202,18 @@ class TableSchema {
 
 class Schema extends TableSchema {
   Schema({super.fields, super.tables});
+}
+
+Value? _coerceType(Type expected, Value actual) {
+  if (expected == actual.value.runtimeType) {
+    return actual;
+  }
+  if (expected == double && actual.runtimeType == NumberIntegerValue) {
+    return NumberDoubleValue(
+      (actual as NumberIntegerValue).value.toDouble(),
+      actual.line,
+      actual.filepath,
+    );
+  }
+  return null;
 }
