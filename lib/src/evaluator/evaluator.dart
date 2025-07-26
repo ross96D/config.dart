@@ -1,6 +1,7 @@
 import 'package:config/src/ast/ast.dart';
 import 'package:config/src/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
+import 'package:config/src/types/duration/duration.dart';
 
 sealed class Value<T extends Object> {
   final T value;
@@ -17,6 +18,11 @@ sealed class Value<T extends Object> {
       ),
       NumberIntegerValue v => NumberIntegerValue(
         value as int? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      DurationValue v => DurationValue(
+        value as Duration? ?? v.value,
         line ?? this.line,
         filepath ?? this.filepath,
       ),
@@ -59,6 +65,10 @@ class NumberDoubleValue extends NumberValue<double> {
 
 class NumberIntegerValue extends NumberValue<int> {
   const NumberIntegerValue(super.value, super.line, super.filepath);
+}
+
+class DurationValue extends Value<Duration> {
+  const DurationValue(super.value, super.line, super.filepath);
 }
 
 class StringValue extends Value<String> {
@@ -401,6 +411,8 @@ Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
       return BooleanValue(expr.value, line, filepath);
     case NumberInteger():
       return NumberIntegerValue(expr.value, line, filepath);
+    case DurationExpression():
+      return DurationValue(expr.value, line, filepath);
 
     case PrefixExpression():
       return _resolvePrefixExpr(expr, declarations);
@@ -647,6 +659,7 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
         resp.write(switch (value) {
           NumberDoubleValue() => value.value.toString(),
           NumberIntegerValue() => value.value.toString(),
+          DurationValue() => value.value.toString(),
           StringValue() => value.value,
           BooleanValue() => value.value.toString(),
           ListValue() => "[${value.value.join(", ")}]",

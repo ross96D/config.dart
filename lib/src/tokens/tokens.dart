@@ -75,9 +75,10 @@ enum TokenType {
 
   StringLiteral,
   InterpolableStringLiteral,
-  Double,
   Integer,
+  Double,
   Identifier,
+  Duration,
 
   Mult,
   Div,
@@ -209,6 +210,7 @@ class Token {
       TokenType.Comment => literal,
       TokenType.Identifier => literal,
       TokenType.Double => literal,
+      TokenType.Duration => literal,
       TokenType.Integer => literal,
       TokenType.KwTrue => "true",
       TokenType.KwFalse => "false",

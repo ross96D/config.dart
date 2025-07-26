@@ -1,4 +1,5 @@
 import 'package:config/src/tokens/tokens.dart';
+import 'package:config/src/types/duration/duration.dart';
 
 abstract class Node {
   final Token token;
@@ -153,6 +154,15 @@ class NumberDouble extends _GenericExpression<double> {
 
 class NumberInteger extends _GenericExpression<int> {
   NumberInteger(super.value, [super.token]);
+
+  @override
+  String toString() {
+    return "$value";
+  }
+}
+
+class DurationExpression extends _GenericExpression<Duration> {
+  DurationExpression(super.value, [super.token]);
 
   @override
   String toString() {

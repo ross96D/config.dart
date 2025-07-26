@@ -1,4 +1,5 @@
 import 'package:config/src/tokens/tokens.dart';
+import 'package:config/src/types/duration/duration.dart';
 
 class Lexer {
   final String filepath;
@@ -240,6 +241,23 @@ class Lexer {
 
   Token _readNumber() {
     assert(_isDigit(), "number must start with a digit");
+    {
+      final lengthDuration = Duration.lexerString(input.substring(_position));
+      if (lengthDuration != null) {
+        final start = _position;
+        final startCursor = _currentCursor();
+        for (int i = 0; i < lengthDuration; i++) {
+          _readChar();
+        }
+        final endCursor = _currentCursor();
+        return Token(
+          literal: input.substring(start, _position),
+          type: TokenType.Duration,
+          pos: Position(start: startCursor, end: endCursor, filepath: filepath),
+        );
+      }
+    }
+
     var type = TokenType.Integer;
 
     final startCursor = _currentCursor();

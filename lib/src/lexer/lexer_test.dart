@@ -48,7 +48,8 @@ VAR = 2
 VAR = 3.0
 VAR1=VAR
 [table]
-      """;
+VAR2=4h23s
+""";
       final tests = [
         Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(0, 0, 0, 3)),
         Token(type: TokenType.Assign, literal: "=", pos: Position.t(0, 4, 0, 5)),
@@ -70,7 +71,13 @@ VAR1=VAR
         Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(3, 6, 3, 7)),
         Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(3, 7, 4, 0)),
 
-        Token(type: TokenType.Eof, literal: "", pos: Position.t(4, 6)),
+
+        Token(type: TokenType.Identifier, literal: "VAR2", pos: Position.t(4, 0, 4, 4)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(4, 4, 4, 5)),
+        Token(type: TokenType.Duration, literal: "4h23s", pos: Position.t(4, 5, 4, 10)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(4, 10, 5, 0)),
+
+        Token(type: TokenType.Eof, literal: "", pos: Position.t(5, 0)),
       ];
       final lexer = Lexer(input);
       for (final expectedToken in tests) {

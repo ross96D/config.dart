@@ -1,9 +1,12 @@
 // ignore_for_file: depend_on_referenced_packages
 
+import 'dart:core' as core show Duration;
+import 'dart:core';
 import 'package:config/src/config_base.dart';
 import 'package:config/src/evaluator/evaluator.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/parser/parser.dart';
+import 'package:config/src/types/duration/duration.dart';
 import 'package:config/src/schema.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +18,7 @@ VAR2 = 12
 \$VAR3 = 'value'
 VAR_BOOL1 = true
 VAR_BOOL2 = false
+DURATION = 12h26s
 
 table {
   VAR4 = "SOMETHINGS"
@@ -41,6 +45,7 @@ table2 {
         "VAR2": 12,
         "VAR_BOOL1": true,
         "VAR_BOOL2": false,
+        "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
         "table": {"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"},
         "table2": {
           "VAR4": "VAL",

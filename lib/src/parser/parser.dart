@@ -1,6 +1,7 @@
 import 'package:config/src/ast/ast.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/tokens/tokens.dart';
+import 'package:config/src/types/duration/duration.dart';
 
 sealed class ParseError {
   final Token token;
@@ -174,7 +175,7 @@ class Parser {
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
-      case TokenType.Integer || TokenType.Double:
+      case TokenType.Integer || TokenType.Double || TokenType.Duration:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -220,7 +221,7 @@ class Parser {
   }
 
   void _ignoreWhilePeek(TokenType type) {
-    while(_peekToken.type == type) {
+    while (_peekToken.type == type) {
       _nextToken();
     }
   }
@@ -338,6 +339,10 @@ class Parser {
     return NumberInteger(int.parse(parser._currenToken.literal), parser._currenToken);
   }
 
+  static DurationExpression _parseDuration(Parser parser) {
+    return DurationExpression(Duration.parse(parser._currenToken.literal), parser._currenToken);
+  }
+
   static StringLiteral _parseStringLiteral(Parser parser) {
     return StringLiteral(parser._currenToken.literal, parser._currenToken);
   }
@@ -411,14 +416,15 @@ class Parser {
     list.add(exp);
 
     while (parser._peekToken.type == TokenType.Comma) {
-      parser._nextToken();// advance last token of expression
-      parser._ignoreWhilePeek(TokenType.NewLine); // ignore all new line tokens (allow multiline statements)
+      // advance last token of expression
+      parser._nextToken();
+      // ignore all new line tokens (allow multiline statements)
+      parser._ignoreWhilePeek(TokenType.NewLine);
       // this allow trailing comma
       if (parser._peekToken.type == end) {
         break;
       }
       parser._nextToken(); // get to the actual token of the expression so _parseExpression works
-
 
       exp = parser._parseExpression(_Precedence.lowest);
       if (exp == null) {
@@ -466,6 +472,7 @@ const _prefixParseFn = {
   TokenType.InterpolableStringLiteral: Parser._parseInterpolableStringLiteral,
   TokenType.Double: Parser._parseNumberDouble,
   TokenType.Integer: Parser._parseNumberInteger,
+  TokenType.Duration: Parser._parseDuration,
   TokenType.Bang: Parser._parsePrefixExpression,
   TokenType.Minus: Parser._parsePrefixExpression,
   TokenType.LeftParent: Parser._parseGroupExpression,
