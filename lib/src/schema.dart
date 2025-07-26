@@ -1,4 +1,7 @@
 import 'package:config/config.dart';
+import 'package:config/src/types/duration/duration.dart';
+import 'dart:core' as core;
+import 'dart:core';
 
 typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> Function(Rec value);
 
@@ -53,6 +56,22 @@ class StringFieldBase<Res extends Object> extends _SimpleField<String, Res> {
 }
 
 typedef StringField = StringFieldBase<String>;
+
+/// If base class is not flexible enough you can implement this class
+abstract class DurationFieldAbstract<Res extends Object> extends Field<Duration, Res> {}
+
+class DurationFieldBase<Res extends Object> extends _SimpleField<Duration, Res> {
+  const DurationFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
+}
+
+/// Schema field to transform the custom package duration to a dart duration
+class DurationField extends DurationFieldBase<core.Duration> {
+  const DurationField(super.name, {super.defaultTo, super.nullable, super.validator = _transform});
+
+  static ValidatorResult<core.Duration> _transform(Duration dur) {
+    return ValidatorTransform(dur.toDartDuration());
+  }
+}
 
 /// If base class is not flexible enough you can implement this class
 abstract class NumberFieldAbs<Res extends Object> extends Field<double, Res> {}
@@ -157,7 +176,7 @@ class TableSchema {
         }
       } else {
         final evalValue = values[key]!;
-        final coerceValue = _coerceType(field.typeRec, evalValue) ;
+        final coerceValue = _coerceType(field.typeRec, evalValue);
         if (coerceValue == null) {
           errors.add(
             ConflictTypeError(
