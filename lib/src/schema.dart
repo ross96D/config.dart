@@ -9,7 +9,6 @@ sealed class Field<Rec extends Object, Res extends Object> {
   final Type typeRec;
   final Type typeRes;
 
-  String get name;
   Res? get defaultTo;
   bool get nullable;
 
@@ -20,9 +19,6 @@ sealed class Field<Rec extends Object, Res extends Object> {
 
 class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
   @override
-  final String name;
-
-  @override
   final Res? defaultTo;
 
   @override
@@ -30,16 +26,12 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 
   final MapperFn<Rec, Res>? _validator;
 
-  const _SimpleField(
-    this.name, {
-    this.defaultTo,
-    this.nullable = false,
-    MapperFn<Rec, Res>? validator,
-  }) : assert(
-         Rec == Res || validator != null,
-         'If the Res object type is different than the Rec type, a validator must be provided',
-       ),
-       _validator = validator;
+  const _SimpleField({this.defaultTo, this.nullable = false, MapperFn<Rec, Res>? validator})
+    : assert(
+        Rec == Res || validator != null,
+        'If the Res object type is different than the Rec type, a validator must be provided',
+      ),
+      _validator = validator;
 
   @override
   ValidatorResult<Res> validator(Rec value) {
@@ -52,7 +44,7 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 abstract class StringFieldAbstract<Res extends Object> extends Field<String, Res> {}
 
 class StringFieldBase<Res extends Object> extends _SimpleField<String, Res> {
-  const StringFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
+  const StringFieldBase({super.defaultTo, super.nullable, super.validator});
 }
 
 typedef StringField = StringFieldBase<String>;
@@ -61,12 +53,12 @@ typedef StringField = StringFieldBase<String>;
 abstract class DurationFieldAbstract<Res extends Object> extends Field<Duration, Res> {}
 
 class DurationFieldBase<Res extends Object> extends _SimpleField<Duration, Res> {
-  const DurationFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
+  const DurationFieldBase({super.defaultTo, super.nullable, super.validator});
 }
 
 /// Schema field to transform the custom package duration to a dart duration
 class DurationField extends DurationFieldBase<core.Duration> {
-  const DurationField(super.name, {super.defaultTo, super.nullable, super.validator = _transform});
+  const DurationField({super.defaultTo, super.nullable, super.validator = _transform});
 
   static ValidatorResult<core.Duration> _transform(Duration dur) {
     return ValidatorTransform(dur.toDartDuration());
@@ -77,7 +69,7 @@ class DurationField extends DurationFieldBase<core.Duration> {
 abstract class NumberFieldAbs<Res extends Object> extends Field<double, Res> {}
 
 class NumberFieldBase<Rec extends num, Res extends Object> extends _SimpleField<Rec, Res> {
-  const NumberFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
+  const NumberFieldBase({super.defaultTo, super.nullable, super.validator});
 }
 
 typedef DoubleNumberField = NumberFieldBase<double, double>;
@@ -87,7 +79,7 @@ typedef IntegerNumberField = NumberFieldBase<int, int>;
 abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {}
 
 class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res> {
-  const BooleanFieldBase(super.name, {super.defaultTo, super.nullable, super.validator});
+  const BooleanFieldBase({super.defaultTo, super.nullable, super.validator});
 }
 
 typedef BooleanField = BooleanFieldBase<bool>;
@@ -101,9 +93,6 @@ class InvalidStringToEnum extends ValidationError {
 
 class EnumField<T extends Enum> extends Field<String, T> {
   @override
-  final String name;
-
-  @override
   final T? defaultTo;
 
   @override
@@ -111,7 +100,7 @@ class EnumField<T extends Enum> extends Field<String, T> {
 
   final List<T> values;
 
-  const EnumField(this.name, this.values, {this.defaultTo, this.nullable = false});
+  const EnumField(this.values, {this.defaultTo, this.nullable = false});
 
   @override
   ValidatorResult<T> validator(String value) {
@@ -129,12 +118,50 @@ class EnumField<T extends Enum> extends Field<String, T> {
   }
 }
 
+class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>, List<Res>> {
+  final Field<Rec, Res> singleField;
+
+  @override
+  final List<Res>? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final MapperFn<List<Res>, List<Res>>? _validator;
+
+  const ListField(
+    this.singleField, {
+    this.defaultTo,
+    this.nullable = false,
+    MapperFn<List<Res>, List<Res>>? validator,
+  }) : _validator = validator;
+
+  @override
+  ValidatorResult<List<Res>> validator(List<Rec> originalList) {
+    final transformedList = <Res>[];
+    for (final originalItem in originalList) {
+      final itemValidatorResult = singleField.validator(originalItem);
+      // TODO: 2 how should inner field options (.nullable ; .defaultTo) be applied, if at all?
+      switch (itemValidatorResult) {
+        case ValidatorSuccess():
+          transformedList.add(originalItem as Res);
+        case ValidatorTransform<Res> transformResult:
+          transformedList.add(transformResult.value);
+        case ValidatorError<ValidationError, Object> transformError:
+          // TODO: 2 implement proper error management for each inner item error
+          return ValidatorError(transformError.value);
+      }
+    }
+    if (_validator != null) {
+      return _validator(transformedList);
+    }
+    return ValidatorTransform(transformedList);
+  }
+}
+
 /// Class that receieves an untyped list object as parameter
 /// The object can have type of double, string, bool or list
 class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
-  @override
-  final String name;
-
   @override
   final List<T>? defaultTo;
 
@@ -143,7 +170,7 @@ class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
 
   final MapperFn<List<Object>, List<T>> tranformFn;
 
-  const UntypedListField(this.name, this.tranformFn, {this.defaultTo, this.nullable = false});
+  const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false});
 
   @override
   ValidatorResult<List<T>> validator(List<Object> value) => tranformFn(value);
@@ -153,9 +180,7 @@ class TableSchema {
   final Map<String, Field> fields;
   final Map<String, TableSchema> tables;
 
-  TableSchema({List<Field>? fields, Map<String, TableSchema>? tables})
-    : fields = fields != null ? Map.fromEntries(fields.map((e) => MapEntry(e.name, e))) : {},
-      tables = tables ?? {};
+  TableSchema({this.fields = const {}, this.tables = const {}});
 
   void apply(Map<String, dynamic> response, MapValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {

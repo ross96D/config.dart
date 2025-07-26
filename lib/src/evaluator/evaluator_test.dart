@@ -98,12 +98,12 @@ Array = [1, 3, 5, [1, 3]]
     }
 
     final schema = Schema(
-      fields: [
-        StringField("VAR1", validator: validator),
-        DoubleNumberField("VAR2"),
-        IntegerNumberField("VAR3", nullable: true),
-        UntypedListField("Array", transform),
-      ],
+      fields: {
+        "VAR1": StringField(validator: validator),
+        "VAR2": DoubleNumberField(),
+        "VAR3": IntegerNumberField(nullable: true),
+        "Array": UntypedListField(transform),
+      },
     );
 
     final evaluator = Evaluator.eval(program, schema: schema);
@@ -133,7 +133,7 @@ Array = [1, 3, 5, [1, 3]]
       return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
     }
 
-    final schema = Schema(fields: [StringField("VAR1", validator: validator)]);
+    final schema = Schema(fields: {"VAR1": StringField(validator: validator)});
     // schema.field<String>("VAR1", validator: (v) => v != 'value' ? NotEqualValidationError() : null);
     final evaluator = Evaluator.eval(program, schema: schema);
 
@@ -149,7 +149,7 @@ Array = [1, 3, 5, [1, 3]]
     final program = parser.parseProgram();
 
     // final schema = Schema()..field<String>("VAR1", defaultsTo: "VALUE");
-    final schema = Schema(fields: [StringField("VAR1", defaultTo: "VALUE")]);
+    final schema = Schema(fields: {"VAR1": StringField(defaultTo: "VALUE")});
     final evaluator = Evaluator.eval(program, schema: schema);
 
     expect(evaluator.$1, equals({"VAR1": "VALUE"}));
@@ -162,7 +162,7 @@ Array = [1, 3, 5, [1, 3]]
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final schema = Schema(fields: [StringField("VAR1")]);
+    final schema = Schema(fields: {"VAR1": StringField()});
     final evaluator = Evaluator.eval(program, schema: schema);
 
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
@@ -224,7 +224,7 @@ VAR = 12
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
+    final evaluator = Evaluator.eval(program, schema: Schema(fields: {"VAR": StringField()}));
 
     expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<ConflictTypeError>());
@@ -238,7 +238,7 @@ VAR = 12
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    final evaluator = Evaluator.eval(program, schema: Schema(fields: [StringField("VAR")]));
+    final evaluator = Evaluator.eval(program, schema: Schema(fields: {"VAR": StringField()}));
 
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
