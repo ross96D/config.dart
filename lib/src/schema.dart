@@ -184,7 +184,7 @@ class TableSchema {
 
   void apply(Map<String, dynamic> response, MapValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
-      if (!fields.containsKey(entry.key)) {
+      if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
         errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
       }
     }

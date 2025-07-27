@@ -83,6 +83,9 @@ VAR3 = 12 / 12
 VAR1 = 'value'
 VAR2 = 2
 Array = [1, 3, 5, [1, 3]]
+Group {
+  VAR2 = 2
+}
 """;
 
     final lexer = Lexer(input, "/path/to/file");
@@ -104,6 +107,9 @@ Array = [1, 3, 5, [1, 3]]
         "VAR3": IntegerNumberField(nullable: true),
         "Array": UntypedListField(transform),
       },
+      tables: {
+        "Group": TableSchema(fields: {"VAR2": DoubleNumberField()}),
+      },
     );
 
     final evaluator = Evaluator.eval(program, schema: schema);
@@ -116,6 +122,7 @@ Array = [1, 3, 5, [1, 3]]
         "VAR2": 2.0,
         "VAR3": null,
         "Array": ['1', '3', '5', '[1, 3]'],
+        "Group": {"VAR2": 2.0},
       }),
     );
 
