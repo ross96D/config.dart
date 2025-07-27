@@ -42,7 +42,7 @@ sealed class Value<T extends Object> {
         filepath ?? this.filepath,
       ),
       ListValue v => ListValue(
-        value as List<Value>? ?? v._values,
+        value as List<Value>? ?? v.value,
         line ?? this.line,
         filepath ?? this.filepath,
       ),
@@ -79,15 +79,12 @@ class BooleanValue extends Value<bool> {
   const BooleanValue(super.value, super.line, super.filepath);
 }
 
-class ListValue extends Value<List<Object>> {
-  final List<Value> _values;
-  const ListValue(this._values, int line, String filepath) : super(const [], line, filepath);
-
-  @override
-  List<Object> get value => toList();
+class ListValue extends Value<List<Value>> {
+  // final List<Value> _values;
+  const ListValue(super.value, super.line, super.filepath);
 
   List<Object> toList() {
-    return _values
+    return value
         .map(
           (e) => switch (e) {
             MapValue() => e.toMap(),

@@ -137,10 +137,10 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
   }) : _validator = validator;
 
   @override
-  ValidatorResult<List<Res>> validator(List<Rec> originalList) {
+  ValidatorResult<List<Res>> validator(List<Object> originalList) {
     final transformedList = <Res>[];
     for (final originalItem in originalList) {
-      final itemValidatorResult = singleField.validator(originalItem);
+      final itemValidatorResult = singleField.validator(originalItem as Rec);
       // TODO: 2 how should inner field options (.nullable ; .defaultTo) be applied, if at all?
       switch (itemValidatorResult) {
         case ValidatorSuccess():
@@ -214,7 +214,8 @@ class TableSchema {
           );
           continue;
         }
-        switch (field.validator(coerceValue.value)) {
+
+        switch (field.validator(unwrapValue(coerceValue))) {
           case ValidatorSuccess<Object>():
             response[key] = coerceValue.value;
           case ValidatorTransform result:
@@ -248,6 +249,14 @@ class Schema extends TableSchema {
   Schema({super.fields, super.tables});
 }
 
+Object unwrapValue(Value val) {
+  if (val is ListValue) {
+    return val.toList();
+  } else {
+    return val.value;
+  }
+}
+
 Value? _coerceType(Type expected, Value actual) {
   if (expected == actual.value.runtimeType) {
     return actual;
@@ -258,6 +267,57 @@ Value? _coerceType(Type expected, Value actual) {
       actual.line,
       actual.filepath,
     );
+  }
+
+  // Coerce type when list
+  if (actual is ListValue) {
+    if (expected == List<Object>) {
+      return actual;
+    }
+    if (expected == List<String>) {
+      final resp = ListValue([], actual.line, actual.filepath);
+      for (final val in actual.value) {
+        final newval = _coerceType(String, val);
+        if (newval == null) {
+          return null;
+        }
+        resp.value.add(newval);
+      }
+      return resp;
+
+    } else if (expected == List<int>) {
+      final resp = ListValue([], actual.line, actual.filepath);
+      for (final val in actual.value) {
+        final newval = _coerceType(int, val);
+        if (newval == null) {
+          return null;
+        }
+        resp.value.add(newval);
+      }
+      return resp;
+
+    } else if (expected == List<double>) {
+      final resp = ListValue([], actual.line, actual.filepath);
+      for (final val in actual.value) {
+        final newval = _coerceType(double, val);
+        if (newval == null) {
+          return null;
+        }
+        resp.value.add(newval);
+      }
+      return resp;
+
+    } else if (expected == List<Duration>) {
+      final resp = ListValue([], actual.line, actual.filepath);
+      for (final val in actual.value) {
+        final newval = _coerceType(Duration, val);
+        if (newval == null) {
+          return null;
+        }
+        resp.value.add(newval);
+      }
+      return resp;
+    }
   }
   return null;
 }
