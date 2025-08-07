@@ -1,5 +1,5 @@
 import 'package:config/src/ast/ast.dart';
-import 'package:config/src/schema.dart';
+import 'package:config/src/schema/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
 import 'package:config/src/types/duration/duration.dart';
 
