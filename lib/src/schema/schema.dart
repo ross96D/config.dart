@@ -186,6 +186,7 @@ class TableSchema {
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
         errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
+        response[entry.key] = entry.value.value;
       }
     }
 

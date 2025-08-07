@@ -149,6 +149,7 @@ VAR = 12
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<KeyNotInSchemaError>());
     expect(evaluator.$2[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
+    expect(evaluator.$1, equals({"VAR": 12}));
   });
 
   test("type conflict", () {
