@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:config/src/evaluator/evaluator.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/parser/parser.dart';
-import 'package:config/src/schema.dart';
+import 'package:config/src/schema/schema.dart';
 
 sealed class EvaluationResult {}
 
