@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 void main() {
   group("testing lexer", () {
     test("intitial", () {
-      final input = "[]{}=</!=,";
+      final input = "[]{}=</!=,:";
 
       final tests = [
         Token(type: TokenType.LeftBracket, literal: "["),
@@ -19,6 +19,7 @@ void main() {
         Token(type: TokenType.Div, literal: "/"),
         Token(type: TokenType.NotEquals, literal: "!="),
         Token(type: TokenType.Comma, literal: ","),
+        Token(type: TokenType.Colon, literal: ":"),
         Token(type: TokenType.Eof, literal: ""),
       ];
       final lexer = Lexer(input);
@@ -29,9 +30,9 @@ void main() {
     });
 
     test("test to fix infinite loop when ilegal character", () {
-      final input = ":q";
+      final input = "${String.fromCharCode(13)}q";
       final tests = [
-        Token(type: TokenType.Illegal, literal: ":"),
+      Token(type: TokenType.Illegal, literal: String.fromCharCode(13)),
         Token(type: TokenType.Identifier, literal: "q"),
         Token(type: TokenType.Eof, literal: ""),
       ];
@@ -98,6 +99,7 @@ key1 = "value"
 key2 = 32
 key3 = 32 <= 42
 key4 = 32 < (42 * 21) + 12 - 10
+key5 = {'foo': 'bar'}
       """;
 
       final tests = [
@@ -157,6 +159,15 @@ key4 = 32 < (42 * 21) + 12 - 10
         Token(type: TokenType.Integer, literal: "12"),
         Token(type: TokenType.Minus, literal: "-"),
         Token(type: TokenType.Integer, literal: "10"),
+        Token(type: TokenType.NewLine, literal: "\n"),
+
+        Token(type: TokenType.Identifier, literal: "key5"),
+        Token(type: TokenType.Assign, literal: "="),
+        Token(type: TokenType.LeftBrace, literal: "{"),
+        Token(type: TokenType.StringLiteral, literal: "foo"),
+        Token(type: TokenType.Colon, literal: ":"),
+        Token(type: TokenType.StringLiteral, literal: "bar"),
+        Token(type: TokenType.RigthBrace, literal: "}"),
         Token(type: TokenType.NewLine, literal: "\n"),
 
         Token(type: TokenType.Eof, literal: ""),

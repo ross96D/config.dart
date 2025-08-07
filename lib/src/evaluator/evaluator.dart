@@ -36,8 +36,13 @@ sealed class Value<T extends Object> {
         line ?? this.line,
         filepath ?? this.filepath,
       ),
-      MapValue v => MapValue(
+      TableValue v => TableValue(
         value as Map<String, Value>? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
+      MapValue v => MapValue(
+        value as Map<Value, Value>? ?? v.value,
         line ?? this.line,
         filepath ?? this.filepath,
       ),
@@ -87,8 +92,9 @@ class ListValue extends Value<List<Value>> {
     return value
         .map(
           (e) => switch (e) {
-            MapValue() => e.toMap(),
+            TableValue() => e.toMap(),
             ListValue() => e.toList(),
+            MapValue() => e.toMap(),
             _ => e.value,
           },
         )
@@ -96,14 +102,38 @@ class ListValue extends Value<List<Value>> {
   }
 }
 
-class MapValue extends Value<Map<String, Value>> {
+class MapValue extends Value<Map<Value, Value>> {
   const MapValue(super.value, super.line, super.filepath);
 
-  factory MapValue.empty([int line = -1, String filepath = ""]) => MapValue({}, line, filepath);
+  Map<Object, Object> toMap() {
+    return value.map(
+      (key, value) => MapEntry(
+        switch (key) {
+          TableValue() => key.toMap(),
+          MapValue() => key.toMap(),
+          ListValue() => key.toList(),
+          _ => key.value,
+        },
+        switch (value) {
+          TableValue() => value.toMap(),
+          MapValue() => value.toMap(),
+          ListValue() => value.toList(),
+          _ => value.value,
+        },
+      ),
+    );
+  }
+}
+
+class TableValue extends Value<Map<String, Value>> {
+  const TableValue(super.value, super.line, super.filepath);
+
+  factory TableValue.empty([int line = -1, String filepath = ""]) => TableValue({}, line, filepath);
 
   Map<String, Object> toMap() {
     return value.map(
       (key, value) => MapEntry(key, switch (value) {
+        TableValue() => value.toMap(),
         MapValue() => value.toMap(),
         ListValue() => value.toList(),
         _ => value.value,
@@ -305,7 +335,7 @@ class RequiredKeyIsMissing extends EvaluationError {
 
 class _BlockEvaluation {
   final List<EvaluationError> errors;
-  final MapValue result;
+  final TableValue result;
 
   _BlockEvaluation(this.result, this.errors);
 }
@@ -323,7 +353,7 @@ class _BlockEvaluator {
       _ownDeclarations = {};
 
   _BlockEvaluation eval() {
-    final result = MapValue.empty();
+    final result = TableValue.empty();
     final errors = <EvaluationError>[];
 
     for (final line in block.lines) {
@@ -354,7 +384,7 @@ class _BlockEvaluator {
           final res = evaluator.eval();
           errors.addAll(res.errors);
           result[key] = res.result;
-          _ownDeclarations[key] = MapValue(
+          _ownDeclarations[key] = TableValue(
             evaluator._ownDeclarations,
             line.token.pos!.start.lineNumber,
             line.token.pos!.filepath,
@@ -416,12 +446,24 @@ Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
     case InfixExpression():
       return _infixPrefixExpr(expr, declarations);
 
-    case Array():
+    case ArrayExpression():
       return _resolveArray(expr, declarations);
+    case MapExpression():
+      return _resolveMap(expr, declarations);
   }
 }
 
-ListValue _resolveArray(Array array, Map<String, Value> declarations) {
+MapValue _resolveMap(MapExpression map, Map<String, Value> declarations) {
+  final resp = <Value<Object>, Value<Object>>{};
+  for (final entry in map.list) {
+    final key = _resolveExpr(entry.key, declarations);
+    final value = _resolveExpr(entry.value, declarations);
+    resp[key] = value;
+  }
+  return MapValue(resp, map.token.pos!.start.lineNumber, map.token.pos!.filepath);
+}
+
+ListValue _resolveArray(ArrayExpression array, Map<String, Value> declarations) {
   final list = <Value>[];
   for (final expr in array.list) {
     list.add(_resolveExpr(expr, declarations));
@@ -660,8 +702,10 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
           StringValue() => value.value,
           BooleanValue() => value.value.toString(),
           ListValue() => "[${value.value.join(", ")}]",
+          MapValue() =>
+            "{${value.value.entries.map((e) => '${e.key.value}: ${e.value.value}').join(', ')}}",
           // TODO: Handle this case.
-          MapValue() => throw UnimplementedError(),
+          TableValue() => throw UnimplementedError(),
         });
       }
       if (i < codeUnits.length) {

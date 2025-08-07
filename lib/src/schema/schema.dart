@@ -182,7 +182,7 @@ class TableSchema {
 
   TableSchema({this.fields = const {}, this.tables = const {}});
 
-  void apply(Map<String, dynamic> response, MapValue values, List<EvaluationError> errors) {
+  void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
         errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
@@ -233,15 +233,15 @@ class TableSchema {
       final key = entry.key;
 
       if (values[key] == null) {
-        values[key] = MapValue.empty();
-      } else if (values[key] is! MapValue) {
+        values[key] = TableValue.empty();
+      } else if (values[key] is! TableValue) {
         throw StateError(
           "Unreachable key is not MapValue when is declared as Table in Schema. "
           "Key: $key Value: ${values[key]}",
         );
       }
       response[key] = <String, dynamic>{};
-      table.apply(response[key], values[key] as MapValue, errors);
+      table.apply(response[key], values[key] as TableValue, errors);
     }
   }
 }

@@ -229,9 +229,9 @@ class InfixExpression extends Expression {
   int get hashCode => Object.hashAll([left, op, right]);
 }
 
-class Array extends Expression {
+class ArrayExpression extends Expression {
   final List<Expression> list;
-  Array(this.list, [super.token]);
+  ArrayExpression(this.list, [super.token]);
 
   @override
   String toString() {
@@ -239,12 +239,63 @@ class Array extends Expression {
   }
 
   @override
-  bool operator ==(covariant Array other) {
+  bool operator ==(covariant ArrayExpression other) {
     if (list.length != other.list.length) {
       return false;
     }
     for (int i = 0; i < list.length; i++) {
       if (list[i] != other.list[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(list);
+}
+
+class EntryExpression {
+  final Expression key;
+  final Expression value;
+
+  EntryExpression(this.key, this.value);
+
+  @override
+  String toString() {
+    return "$key: $value";
+  }
+
+  @override
+  bool operator ==(covariant EntryExpression other) {
+    return key == other.key;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([key]);
+}
+
+class MapExpression extends Expression {
+  final Set<EntryExpression> list;
+
+  MapExpression(this.list, [super.token]);
+
+  @override
+  String toString() {
+    return "{${list.join(", ")}}";
+  }
+
+  @override
+  bool operator ==(covariant MapExpression other) {
+    if (list.length != other.list.length) {
+      return false;
+    }
+    for (final e in list) {
+      final otherValue = other.list.lookup(e);
+      if (otherValue == null) {
+        return false;
+      }
+      if (otherValue.value != e.value) {
         return false;
       }
     }

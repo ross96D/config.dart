@@ -79,6 +79,10 @@ array4 = [
   2,
   3,
 ]
+map1 = {
+  1: 12,
+}
+mapEmpty = {}
     """;
 
     final lexer = Lexer(input, "path/to/file");
@@ -105,15 +109,17 @@ array4 = [
           ]),
           AssigmentLine(
             Identifier("array"),
-            Array([
+            ArrayExpression([
               NumberInteger(1),
               InfixExpression(NumberInteger(2), Operator.Plus, NumberInteger(3)),
               InfixExpression(NumberInteger(3), Operator.Mult, Identifier("VAR3")),
             ]),
           ),
-          AssigmentLine(Identifier("array2"), Array([NumberInteger(1)])),
-          AssigmentLine(Identifier("array3"), Array([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
-          AssigmentLine(Identifier("array4"), Array([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
+          AssigmentLine(Identifier("array2"), ArrayExpression([NumberInteger(1)])),
+          AssigmentLine(Identifier("array3"), ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
+          AssigmentLine(Identifier("array4"), ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
+          AssigmentLine(Identifier("map1"), MapExpression({EntryExpression(NumberInteger(1), NumberInteger(12))})),
+          AssigmentLine(Identifier("mapEmpty"), MapExpression({})),
         ]),
       ),
     );

@@ -28,6 +28,14 @@ table2 {
   VAR5 = [1, 3 + 4, VAR3]
 }
 
+map = {
+  12: 31,
+  "Key": "Value",
+  true: 0,
+  1: false,
+  12ms: false,
+}
+
     """;
 
     final lexer = Lexer(input, "/path/to/file");
@@ -48,6 +56,13 @@ table2 {
         "table2": {
           "VAR4": "VAL",
           "VAR5": [1, 7, 'value'],
+        },
+        "map": {
+          12: 31,
+          "Key": "Value",
+          true: 0,
+          1: false,
+          Duration(12000): false,
         },
       }),
     );

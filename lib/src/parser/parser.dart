@@ -156,7 +156,7 @@ class Parser {
       case TokenType.Illegal:
         errors.add(IlegalTokenFound(_currenToken, lexer.input));
         return null;
-      case TokenType.Assign || TokenType.Comma:
+      case TokenType.Assign || TokenType.Comma || TokenType.Colon:
         errors.add(BadTokenAtLineStart(_currenToken, lexer.input));
         return null;
 
@@ -392,11 +392,11 @@ class Parser {
     return expr;
   }
 
-  static Array _parseArray(Parser parser) {
+  static ArrayExpression _parseArray(Parser parser) {
     final token = parser._currenToken;
     final list = _parseExpressionList(parser, TokenType.RigthBracket);
 
-    return Array(list, token);
+    return ArrayExpression(list, token);
   }
 
   static List<Expression> _parseExpressionList(Parser parser, TokenType end) {
@@ -436,6 +436,48 @@ class Parser {
     parser._ignoreWhilePeek(TokenType.NewLine);
     parser._expectPeek(end);
     return list;
+  }
+
+  static MapExpression _parserMapExpression(Parser parser) {
+    assert(parser._currenToken.type == TokenType.LeftBrace);
+    final token = parser._currenToken;
+    parser._ignoreWhilePeek(TokenType.NewLine);
+
+    final response = MapExpression({}, token);
+    while (parser._peekToken.type != TokenType.RigthBrace) {
+      // parse key
+      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
+      parser._nextToken(); // advance to the expression actual token
+      final key = parser._parseExpression(_Precedence.lowest);
+      if (key == null) {
+        return response;
+      }
+      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
+      if (!parser._expectPeek(TokenType.Colon)) {
+        return response;
+      }
+
+      // parse value
+      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
+      parser._nextToken(); // advance to the expression actual token
+      final value = parser._parseExpression(_Precedence.lowest);
+      if (value == null) {
+        return response;
+      }
+      response.list.add(EntryExpression(key, value));
+
+      // `parse` comma
+      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
+      if (parser._peekToken.type == TokenType.RigthBrace) {
+        break;
+      }
+      if (!parser._expectPeek(TokenType.Comma)) {
+        return response;
+      }
+      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
+    }
+    parser._expectPeek(TokenType.RigthBrace);
+    return response;
   }
 }
 
@@ -477,6 +519,7 @@ const _prefixParseFn = {
   TokenType.Minus: Parser._parsePrefixExpression,
   TokenType.LeftParent: Parser._parseGroupExpression,
   TokenType.LeftBracket: Parser._parseArray,
+  TokenType.LeftBrace: Parser._parserMapExpression,
 };
 
 const _infixParseFn = {

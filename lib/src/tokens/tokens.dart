@@ -56,6 +56,8 @@ enum TokenType {
   NewLine,
   Comma,
   Comment,
+  /// Symbol: `:`
+  Colon,
 
   /// Symbol: `{`
   LeftBrace,
@@ -231,6 +233,7 @@ class Token {
       TokenType.LessOrEqThan => "<=",
 
       TokenType.Bang => "!",
+      TokenType.Colon => ":",
     };
   }
 }
