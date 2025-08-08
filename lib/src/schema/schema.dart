@@ -391,7 +391,7 @@ class TableSchema {
   final Map<String, Field> fields;
   final Map<String, TableSchema> tables;
 
-  TableSchema({this.fields = const {}, this.tables = const {}});
+  const TableSchema({this.fields = const {}, this.tables = const {}});
 
   void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
@@ -457,9 +457,7 @@ class TableSchema {
   }
 }
 
-class Schema extends TableSchema {
-  Schema({super.fields, super.tables});
-}
+typdef Schema = TableSchema;
 
 Object unwrapValue(Value val) {
   if (val is ListValue) {
