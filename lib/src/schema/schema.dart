@@ -190,8 +190,16 @@ class NumberFieldBase<Rec extends num, Res extends Object> extends _SimpleField<
       });
 }
 
-typedef DoubleNumberField = NumberFieldBase<double, double>;
-typedef IntegerNumberField = NumberFieldBase<int, int>;
+class DoubleNumberField extends _SimpleField<double, double> {
+  const DoubleNumberField({super.defaultTo, super.nullable, super.validator})
+    : super(const _Double());
+}
+
+class IntegerNumberField extends _SimpleField<int, int> {
+  const IntegerNumberField({super.defaultTo, super.nullable, super.validator})
+    : super(const _Int());
+}
+
 
 /// If base class is not flexible enough you can implement this class
 abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {
