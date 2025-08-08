@@ -1,3 +1,5 @@
+// ignore_for_file: type_literal_in_constant_pattern
+
 import 'package:config/config.dart';
 import 'package:config/src/types/duration/duration.dart';
 import 'dart:core' as core;
@@ -5,14 +7,108 @@ import 'dart:core';
 
 typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> Function(Rec value);
 
+sealed class _TypeRec {
+  const _TypeRec();
+
+  static fromType(Type t) {
+    return switch (t) {
+      String => const _String(),
+      int => const _Int(),
+      double => const _Double(),
+      Duration => const _Duration(),
+      Type() => throw UnimplementedError(),
+    };
+  }
+
+  Type get innerType;
+
+  @override
+  String toString() {
+    return switch (this) {
+      _Any _ => "Object",
+      _String _ => "String",
+      _Int _ => "int",
+      _Double _ => "double",
+      _Boolean _ => "bool",
+      _Duration _ => "Duration",
+      _List v => "List<${v.inner}>",
+      _Map v => "Map<${v.key}, ${v.value}>",
+    };
+  }
+}
+
+final class _Any extends _TypeRec {
+  const _Any();
+
+  @override
+  Type get innerType => Object;
+}
+
+final class _String extends _TypeRec {
+  const _String();
+
+  @override
+  Type get innerType => String;
+}
+
+final class _Int extends _TypeRec {
+  const _Int();
+
+  @override
+  Type get innerType => int;
+}
+
+final class _Double extends _TypeRec {
+  const _Double();
+
+  @override
+  Type get innerType => double;
+}
+
+final class _Boolean extends _TypeRec {
+  const _Boolean();
+
+  @override
+  Type get innerType => bool;
+}
+
+final class _Duration extends _TypeRec {
+  const _Duration();
+
+  @override
+  Type get innerType => Duration;
+}
+
+final class _List extends _TypeRec {
+  final _TypeRec inner;
+  const _List(this.inner);
+
+  @override
+  Type get innerType => List;
+}
+
+final class _Map extends _TypeRec {
+  final _TypeRec key;
+  final _TypeRec value;
+
+  const _Map(this.key, this.value);
+  // _Map.from(Type keyRec, Type valueRec)
+  //   : key = _TypeRec.fromType(keyRec),
+  //     value = _TypeRec.fromType(valueRec);
+
+  @override
+  Type get innerType => Map;
+}
+
 sealed class Field<Rec extends Object, Res extends Object> {
-  final Type typeRec;
-  final Type typeRes;
+  final _TypeRec _typeRec;
+  // ignore: unused_field TODO maybe this field could be deleted
+  final Type _typeRes;
 
   Res? get defaultTo;
   bool get nullable;
 
-  const Field() : typeRec = Rec, typeRes = Res;
+  const Field(this._typeRec) : _typeRes = Res;
 
   ValidatorResult<Res> validator(Rec value);
 }
@@ -26,12 +122,16 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 
   final MapperFn<Rec, Res>? _validator;
 
-  const _SimpleField({this.defaultTo, this.nullable = false, MapperFn<Rec, Res>? validator})
-    : assert(
-        Rec == Res || validator != null,
-        'If the Res object type is different than the Rec type, a validator must be provided',
-      ),
-      _validator = validator;
+  const _SimpleField(
+    super.typeRec, {
+    this.defaultTo,
+    this.nullable = false,
+    MapperFn<Rec, Res>? validator,
+  }) : assert(
+         Rec == Res || validator != null,
+         'If the Res object type is different than the Rec type, a validator must be provided',
+       ),
+       _validator = validator;
 
   @override
   ValidatorResult<Res> validator(Rec value) {
@@ -41,19 +141,25 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 }
 
 /// If base class is not flexible enough you can implement this class
-abstract class StringFieldAbstract<Res extends Object> extends Field<String, Res> {}
+abstract class StringFieldAbstract<Res extends Object> extends Field<String, Res> {
+  const StringFieldAbstract() : super(const _String());
+}
 
 class StringFieldBase<Res extends Object> extends _SimpleField<String, Res> {
-  const StringFieldBase({super.defaultTo, super.nullable, super.validator});
+  const StringFieldBase({super.defaultTo, super.nullable, super.validator})
+    : super(const _String());
 }
 
 typedef StringField = StringFieldBase<String>;
 
 /// If base class is not flexible enough you can implement this class
-abstract class DurationFieldAbstract<Res extends Object> extends Field<Duration, Res> {}
+abstract class DurationFieldAbstract<Res extends Object> extends Field<Duration, Res> {
+  const DurationFieldAbstract() : super(const _Duration());
+}
 
 class DurationFieldBase<Res extends Object> extends _SimpleField<Duration, Res> {
-  const DurationFieldBase({super.defaultTo, super.nullable, super.validator});
+  const DurationFieldBase({super.defaultTo, super.nullable, super.validator})
+    : super(const _Duration());
 }
 
 /// Schema field to transform the custom package duration to a dart duration
@@ -66,20 +172,35 @@ class DurationField extends DurationFieldBase<core.Duration> {
 }
 
 /// If base class is not flexible enough you can implement this class
-abstract class NumberFieldAbs<Res extends Object> extends Field<double, Res> {}
+abstract class NumberFieldAbs<Rec extends num, Res extends Object> extends Field<double, Res> {
+  NumberFieldAbs()
+    : super(switch (Rec) {
+        int => const _Int(),
+        double => const _Double(),
+        core.Type() => throw UnimplementedError(),
+      });
+}
 
 class NumberFieldBase<Rec extends num, Res extends Object> extends _SimpleField<Rec, Res> {
-  const NumberFieldBase({super.defaultTo, super.nullable, super.validator});
+  NumberFieldBase({super.defaultTo, super.nullable, super.validator})
+    : super(switch (Rec) {
+        int => const _Int(),
+        double => const _Double(),
+        core.Type() => throw UnimplementedError(),
+      });
 }
 
 typedef DoubleNumberField = NumberFieldBase<double, double>;
 typedef IntegerNumberField = NumberFieldBase<int, int>;
 
 /// If base class is not flexible enough you can implement this class
-abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {}
+abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {
+  const BooleanFieldAbstract() : super(const _Boolean());
+}
 
 class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res> {
-  const BooleanFieldBase({super.defaultTo, super.nullable, super.validator});
+  const BooleanFieldBase({super.defaultTo, super.nullable, super.validator})
+    : super(const _Boolean());
 }
 
 typedef BooleanField = BooleanFieldBase<bool>;
@@ -100,7 +221,7 @@ class EnumField<T extends Enum> extends Field<String, T> {
 
   final List<T> values;
 
-  const EnumField(this.values, {this.defaultTo, this.nullable = false});
+  const EnumField(this.values, {this.defaultTo, this.nullable = false}) : super(const _String());
 
   @override
   ValidatorResult<T> validator(String value) {
@@ -129,12 +250,13 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
 
   final MapperFn<List<Res>, List<Res>>? _validator;
 
-  const ListField(
+  ListField(
     this.singleField, {
     this.defaultTo,
     this.nullable = false,
     MapperFn<List<Res>, List<Res>>? validator,
-  }) : _validator = validator;
+  }) : _validator = validator,
+       super(_List(_TypeRec.fromType(Rec)));
 
   @override
   ValidatorResult<List<Res>> validator(List<Object> originalList) {
@@ -159,6 +281,69 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
   }
 }
 
+class MapField<Key extends Object, Val extends Object, ResKey extends Object, ResVal extends Object>
+    extends Field<Map<Key, Val>, Map<ResKey, ResVal>> {
+  final Field<Key, ResKey> keyField;
+  final Field<Val, ResVal> valField;
+
+  @override
+  final Map<ResKey, ResVal>? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? _validator;
+
+  MapField(
+    this.keyField,
+    this.valField, {
+    this.defaultTo,
+    this.nullable = false,
+    MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? validator,
+  }) : _validator = validator,
+       super(_Map(_TypeRec.fromType(Key), _TypeRec.fromType(Val)));
+
+  @override
+  ValidatorResult<Map<ResKey, ResVal>> validator(Map<Object, Object> originalMap) {
+    final transformedMap = <ResKey, ResVal>{};
+
+    for (final originalItem in originalMap.entries) {
+      final originalKey = originalItem.key;
+      final originalVal = originalItem.value;
+      final keyValidatorResult = keyField.validator(originalKey as Key);
+
+      ResKey key;
+      switch (keyValidatorResult) {
+        case ValidatorSuccess<ResKey> _:
+          key = originalKey as ResKey;
+        case ValidatorTransform<ResKey> transformResult:
+          key = transformResult.value;
+        case ValidatorError<ValidationError, core.Object> transformError:
+          // TODO: 2 implement proper error management for each inner item error
+          return ValidatorError(transformError.value);
+      }
+
+      final valValidatorResult = valField.validator(originalVal as Val);
+      ResVal val;
+      switch (valValidatorResult) {
+        case ValidatorSuccess<ResVal> _:
+          val = originalVal as ResVal;
+        case ValidatorTransform<ResVal> transformResult:
+          val = transformResult.value;
+        case ValidatorError<ValidationError, core.Object> transformError:
+          // TODO: 2 implement proper error management for each inner item error
+          return ValidatorError(transformError.value);
+      }
+
+      transformedMap[key] = val;
+    }
+    if (_validator != null) {
+      return _validator(transformedMap);
+    }
+    return ValidatorTransform(transformedMap);
+  }
+}
+
 /// Class that receieves an untyped list object as parameter
 /// The object can have type of double, string, bool or list
 class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
@@ -170,10 +355,28 @@ class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
 
   final MapperFn<List<Object>, List<T>> tranformFn;
 
-  const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false});
+  const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false})
+    : super(const _List(_Any()));
 
   @override
   ValidatorResult<List<T>> validator(List<Object> value) => tranformFn(value);
+}
+
+class UntypedMapField<K extends Object, V extends Object>
+    extends Field<Map<Object, Object>, Map<K, V>> {
+  @override
+  final Map<K, V>? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final MapperFn<Map<Object, Object>, Map<K, V>> tranformFn;
+
+  const UntypedMapField(this.tranformFn, {this.defaultTo, this.nullable = false})
+    : super(const _Map(_Any(), _Any()));
+
+  @override
+  ValidatorResult<Map<K, V>> validator(Map<Object, Object> value) => tranformFn(value);
 }
 
 class TableSchema {
@@ -202,15 +405,15 @@ class TableSchema {
         }
       } else {
         final evalValue = values[key]!;
-        final coerceValue = _coerceType(field.typeRec, evalValue);
+        final coerceValue = _coerceType(field._typeRec, evalValue);
         if (coerceValue == null) {
           errors.add(
             ConflictTypeError(
               key,
               evalValue.line,
               evalValue.filepath,
-              field.typeRec,
-              evalValue.value.runtimeType,
+              "${field._typeRec}",
+              "${evalValue.value.runtimeType}",
             ),
           );
           continue;
@@ -253,16 +456,18 @@ class Schema extends TableSchema {
 Object unwrapValue(Value val) {
   if (val is ListValue) {
     return val.toList();
+  } else if (val is MapValue) {
+    return val.toMap();
   } else {
     return val.value;
   }
 }
 
-Value? _coerceType(Type expected, Value actual) {
-  if (expected == actual.value.runtimeType) {
+Value? _coerceType(_TypeRec expected, Value actual) {
+  if (expected.innerType == actual.value.runtimeType) {
     return actual;
   }
-  if (expected == double && actual.runtimeType == NumberIntegerValue) {
+  if (expected.innerType == double && actual.runtimeType == NumberIntegerValue) {
     return NumberDoubleValue(
       (actual as NumberIntegerValue).value.toDouble(),
       actual.line,
@@ -272,53 +477,50 @@ Value? _coerceType(Type expected, Value actual) {
 
   // Coerce type when list
   if (actual is ListValue) {
-    if (expected == List<Object>) {
-      return actual;
+    if (expected is! _List) {
+      return null;
     }
-    if (expected == List<String>) {
-      final resp = ListValue([], actual.line, actual.filepath);
-      for (final val in actual.value) {
-        final newval = _coerceType(String, val);
-        if (newval == null) {
-          return null;
-        }
-        resp.value.add(newval);
-      }
-      return resp;
-
-    } else if (expected == List<int>) {
-      final resp = ListValue([], actual.line, actual.filepath);
-      for (final val in actual.value) {
-        final newval = _coerceType(int, val);
-        if (newval == null) {
-          return null;
-        }
-        resp.value.add(newval);
-      }
-      return resp;
-
-    } else if (expected == List<double>) {
-      final resp = ListValue([], actual.line, actual.filepath);
-      for (final val in actual.value) {
-        final newval = _coerceType(double, val);
-        if (newval == null) {
-          return null;
-        }
-        resp.value.add(newval);
-      }
-      return resp;
-
-    } else if (expected == List<Duration>) {
-      final resp = ListValue([], actual.line, actual.filepath);
-      for (final val in actual.value) {
-        final newval = _coerceType(Duration, val);
-        if (newval == null) {
-          return null;
-        }
-        resp.value.add(newval);
-      }
-      return resp;
+    return _coerceList(expected, actual);
+  }
+  if (actual is MapValue) {
+    if (expected is! _Map) {
+      return null;
     }
+    return _coerceMap(expected, actual);
   }
   return null;
+}
+
+ListValue? _coerceList(_List expected, ListValue actual) {
+  if (expected.inner is _Any) {
+    return actual;
+  }
+  final resp = ListValue([], actual.line, actual.filepath);
+  for (final val in actual.value) {
+    final newval = _coerceType(expected.inner, val);
+    if (newval == null) {
+      return null;
+    }
+    resp.value.add(newval);
+  }
+  return resp;
+}
+
+MapValue? _coerceMap(_Map expected, MapValue actual) {
+  if (expected.key is _Any && expected.value is _Any) {
+    return actual;
+  }
+  final resp = MapValue({}, actual.line, actual.filepath);
+  for (final entry in actual.value.entries) {
+    final key = _coerceType(expected.key, entry.key);
+    if (key == null) {
+      return null;
+    }
+    final value = _coerceType(expected.value, entry.value);
+    if (value == null) {
+      return null;
+    }
+    resp.value[key] = value;
+  }
+  return resp;
 }

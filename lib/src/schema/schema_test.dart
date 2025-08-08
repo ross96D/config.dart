@@ -4,6 +4,17 @@ import 'package:config/src/lexer/lexer.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test("test coerce int to double", () {
+    final input = "VAR2 = 2";
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+    final schema = Schema(fields: {"VAR2": DoubleNumberField()});
+    final evaluator = Evaluator.eval(program, schema: schema);
+    expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join("\n"));
+    expect(evaluator.$1, equals({"VAR2": 2.0}));
+  });
+
   test("schema success", () {
     final input = """
 VAR1 = 'value'
@@ -11,6 +22,11 @@ VAR2 = 2
 Array = [1, 3, 5, [1, 3]]
 Group {
   VAR2 = 2
+}
+Map = {
+  12: true,
+  true: "some",
+  "key": "value",
 }
 """;
 
@@ -22,8 +38,12 @@ Group {
       return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
     }
 
-    ValidatorResult<List<String>> transform(List<Object> v) {
+    ValidatorResult<List<String>> transformList(List<Object> v) {
       return ValidatorTransform(v.map((e) => e.toString()).toList());
+    }
+
+    ValidatorResult<Map<Object, Object>> transformMap(Map<Object, Object> v) {
+      return ValidatorTransform(v);
     }
 
     final schema = Schema(
@@ -31,7 +51,8 @@ Group {
         "VAR1": StringField(validator: validator),
         "VAR2": DoubleNumberField(),
         "VAR3": IntegerNumberField(nullable: true),
-        "Array": UntypedListField(transform),
+        "Array": UntypedListField(transformList),
+        "Map": UntypedMapField(transformMap),
       },
       tables: {
         "Group": TableSchema(fields: {"VAR2": DoubleNumberField()}),
@@ -49,12 +70,12 @@ Group {
         "VAR3": null,
         "Array": ['1', '3', '5', '[1, 3]'],
         "Group": {"VAR2": 2.0},
+        "Map": {12: true, true: "some", "key": "value"},
       }),
     );
 
     expect(evaluator.$2, isEmpty);
   });
-
 
   test("schema failed", () {
     final input = "VAR1 = 'not_value'";
@@ -163,7 +184,7 @@ VAR = 12
 
     expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<ConflictTypeError>());
-    expect(evaluator.$2[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", String, int)));
+    expect(evaluator.$2[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", "String", "int")));
   });
 
   test("missing required key", () {
@@ -202,8 +223,34 @@ VAR = ["12", "zome", "item"]
       }),
     );
   });
+
+  test("MapFieldSchema", () {
+    final input = """
+Map = {
+  "Something": "val1",
+  "Something3": "val2",
+}
+    """;
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+    expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+
+    final evaluator = Evaluator.eval(
+      program,
+      schema: Schema(fields: {"Map": MapField(StringField(), EnumField(SchemaTestEnum.values))}),
+    );
+    expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
+    expect(
+      evaluator.$1,
+      equals({
+        "Map": {"Something": SchemaTestEnum.val1, "Something3": SchemaTestEnum.val2},
+      }),
+    );
+  });
 }
 
+enum SchemaTestEnum { val1, val2, val3, val4, val5 }
 
 class NotEqualValidationError extends ValidationError {
   @override

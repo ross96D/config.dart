@@ -277,22 +277,22 @@ class ConflictTypeError extends EvaluationError {
   final int line;
   final String filepath;
   final String keyName;
-  final Type expected;
-  final Type actual;
+  final String typeExpected;
+  final String typeActual;
 
-  ConflictTypeError(this.keyName, this.line, this.filepath, this.expected, this.actual);
+  ConflictTypeError(this.keyName, this.line, this.filepath, this.typeExpected, this.typeActual);
 
   @override
   String error() {
     return """
-Type Error $keyName expected type is $expected but found $actual
+Type Error $keyName expected type is $typeExpected but found $typeActual
 $filepath:${line + 1}:0
 """;
   }
 
   @override
   String toString() {
-    return "ConflictTypeError(keyName: $keyName, line: $line,  filepath: $filepath, expected: $expected, actual: $actual)";
+    return "ConflictTypeError(keyName: $keyName, line: $line,  filepath: $filepath, expected: $typeExpected, actual: $typeActual)";
   }
 
   @override
@@ -300,12 +300,12 @@ $filepath:${line + 1}:0
     return line == other.line &&
         keyName == other.keyName &&
         filepath == other.filepath &&
-        expected == other.expected &&
-        actual == other.actual;
+        typeExpected == other.typeExpected &&
+        typeActual == other.typeActual;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, keyName, expected, actual, filepath]);
+  int get hashCode => Object.hashAll([line, keyName, typeExpected, typeActual, filepath]);
 }
 
 class RequiredKeyIsMissing extends EvaluationError {

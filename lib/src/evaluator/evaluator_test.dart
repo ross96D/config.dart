@@ -57,13 +57,7 @@ map = {
           "VAR4": "VAL",
           "VAR5": [1, 7, 'value'],
         },
-        "map": {
-          12: 31,
-          "Key": "Value",
-          true: 0,
-          1: false,
-          Duration(12000): false,
-        },
+        "map": {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
       }),
     );
   });
@@ -76,9 +70,9 @@ VAR3 = 12 / 12
     """;
     final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
-    expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
 
     final program = parser.parseProgram();
+    expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
 
     final evaluator = Evaluator.eval(program);
 

@@ -116,9 +116,18 @@ mapEmpty = {}
             ]),
           ),
           AssigmentLine(Identifier("array2"), ArrayExpression([NumberInteger(1)])),
-          AssigmentLine(Identifier("array3"), ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
-          AssigmentLine(Identifier("array4"), ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)])),
-          AssigmentLine(Identifier("map1"), MapExpression({EntryExpression(NumberInteger(1), NumberInteger(12))})),
+          AssigmentLine(
+            Identifier("array3"),
+            ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)]),
+          ),
+          AssigmentLine(
+            Identifier("array4"),
+            ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)]),
+          ),
+          AssigmentLine(
+            Identifier("map1"),
+            MapExpression({EntryExpression(NumberInteger(1), NumberInteger(12))}),
+          ),
           AssigmentLine(Identifier("mapEmpty"), MapExpression({})),
         ]),
       ),
