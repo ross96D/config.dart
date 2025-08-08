@@ -34,6 +34,7 @@ map = {
   true: 0,
   1: false,
   12ms: false,
+  # "Not": false,
 }
 
     """;
