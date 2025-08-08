@@ -316,7 +316,7 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
 
   final MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? _validator;
 
-  MapField(
+  const MapField(
     this.keyField,
     this.valField, {
     this.defaultTo,
