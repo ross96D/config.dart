@@ -10,7 +10,7 @@ typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> 
 sealed class _TypeRec {
   const _TypeRec();
 
-  static fromType(Type t) {
+  factory _TypeRec.fromType(Type t) {
     return switch (t) {
       String => const _String(),
       int => const _Int(),
@@ -101,19 +101,20 @@ final class _Map extends _TypeRec {
 }
 
 sealed class Field<Rec extends Object, Res extends Object> {
-  final _TypeRec _typeRec;
   // ignore: unused_field TODO maybe this field could be deleted
   final Type _typeRes;
 
   Res? get defaultTo;
   bool get nullable;
 
-  const Field(this._typeRec) : _typeRes = Res;
+  const Field() : _typeRes = Res;
+
+  _TypeRec get _typeRec;
 
   ValidatorResult<Res> validator(Rec value);
 }
 
-class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
+abstract class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
   @override
   final Res? defaultTo;
 
@@ -122,16 +123,12 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 
   final MapperFn<Rec, Res>? _validator;
 
-  const _SimpleField(
-    super.typeRec, {
-    this.defaultTo,
-    this.nullable = false,
-    MapperFn<Rec, Res>? validator,
-  }) : assert(
-         Rec == Res || validator != null,
-         'If the Res object type is different than the Rec type, a validator must be provided',
-       ),
-       _validator = validator;
+  const _SimpleField({this.defaultTo, this.nullable = false, MapperFn<Rec, Res>? validator})
+    : assert(
+        Rec == Res || validator != null,
+        'If the Res object type is different than the Rec type, a validator must be provided',
+      ),
+      _validator = validator;
 
   @override
   ValidatorResult<Res> validator(Rec value) {
@@ -142,24 +139,30 @@ class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Re
 
 /// If base class is not flexible enough you can implement this class
 abstract class StringFieldAbstract<Res extends Object> extends Field<String, Res> {
-  const StringFieldAbstract() : super(const _String());
+  const StringFieldAbstract();
+  @override
+  _TypeRec get _typeRec => const _String();
 }
 
 class StringFieldBase<Res extends Object> extends _SimpleField<String, Res> {
-  const StringFieldBase({super.defaultTo, super.nullable, super.validator})
-    : super(const _String());
+  const StringFieldBase({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => const _String();
 }
 
 typedef StringField = StringFieldBase<String>;
 
 /// If base class is not flexible enough you can implement this class
 abstract class DurationFieldAbstract<Res extends Object> extends Field<Duration, Res> {
-  const DurationFieldAbstract() : super(const _Duration());
+  const DurationFieldAbstract();
+  @override
+  _TypeRec get _typeRec => const _Duration();
 }
 
 class DurationFieldBase<Res extends Object> extends _SimpleField<Duration, Res> {
-  const DurationFieldBase({super.defaultTo, super.nullable, super.validator})
-    : super(const _Duration());
+  const DurationFieldBase({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => const _Duration();
 }
 
 /// Schema field to transform the custom package duration to a dart duration
@@ -173,42 +176,48 @@ class DurationField extends DurationFieldBase<core.Duration> {
 
 /// If base class is not flexible enough you can implement this class
 abstract class NumberFieldAbs<Rec extends num, Res extends Object> extends Field<double, Res> {
-  NumberFieldAbs()
-    : super(switch (Rec) {
-        int => const _Int(),
-        double => const _Double(),
-        core.Type() => throw UnimplementedError(),
-      });
+  const NumberFieldAbs();
+  @override
+  _TypeRec get _typeRec => switch (Rec) {
+    int => const _Int(),
+    double => const _Double(),
+    _ => throw UnimplementedError(),
+  };
 }
 
 class NumberFieldBase<Rec extends num, Res extends Object> extends _SimpleField<Rec, Res> {
-  NumberFieldBase({super.defaultTo, super.nullable, super.validator})
-    : super(switch (Rec) {
-        int => const _Int(),
-        double => const _Double(),
-        core.Type() => throw UnimplementedError(),
-      });
+  NumberFieldBase({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => switch (Rec) {
+    int => const _Int(),
+    double => const _Double(),
+    _ => throw UnimplementedError(),
+  };
 }
 
 class DoubleNumberField extends _SimpleField<double, double> {
-  const DoubleNumberField({super.defaultTo, super.nullable, super.validator})
-    : super(const _Double());
+  const DoubleNumberField({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => const _Double();
 }
 
 class IntegerNumberField extends _SimpleField<int, int> {
-  const IntegerNumberField({super.defaultTo, super.nullable, super.validator})
-    : super(const _Int());
+  const IntegerNumberField({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => const _Int();
 }
-
 
 /// If base class is not flexible enough you can implement this class
 abstract class BooleanFieldAbstract<Res extends Object> extends Field<bool, Res> {
-  const BooleanFieldAbstract() : super(const _Boolean());
+  const BooleanFieldAbstract();
+  @override
+  _TypeRec get _typeRec => const _Boolean();
 }
 
 class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res> {
-  const BooleanFieldBase({super.defaultTo, super.nullable, super.validator})
-    : super(const _Boolean());
+  const BooleanFieldBase({super.defaultTo, super.nullable, super.validator});
+  @override
+  _TypeRec get _typeRec => const _Boolean();
 }
 
 typedef BooleanField = BooleanFieldBase<bool>;
@@ -229,7 +238,10 @@ class EnumField<T extends Enum> extends Field<String, T> {
 
   final List<T> values;
 
-  const EnumField(this.values, {this.defaultTo, this.nullable = false}) : super(const _String());
+  const EnumField(this.values, {this.defaultTo, this.nullable = false});
+
+  @override
+  _TypeRec get _typeRec => const _String();
 
   @override
   ValidatorResult<T> validator(String value) {
@@ -258,13 +270,15 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
 
   final MapperFn<List<Res>, List<Res>>? _validator;
 
-  ListField(
+  const ListField(
     this.singleField, {
     this.defaultTo,
     this.nullable = false,
     MapperFn<List<Res>, List<Res>>? validator,
-  }) : _validator = validator,
-       super(_List(_TypeRec.fromType(Rec)));
+  }) : _validator = validator;
+
+  @override
+  _TypeRec get _typeRec => _List(_TypeRec.fromType(Rec));
 
   @override
   ValidatorResult<List<Res>> validator(List<Object> originalList) {
@@ -308,8 +322,10 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
     this.defaultTo,
     this.nullable = false,
     MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? validator,
-  }) : _validator = validator,
-       super(_Map(_TypeRec.fromType(Key), _TypeRec.fromType(Val)));
+  }) : _validator = validator;
+
+  @override
+  _TypeRec get _typeRec => _Map(_TypeRec.fromType(Key), _TypeRec.fromType(Val));
 
   @override
   ValidatorResult<Map<ResKey, ResVal>> validator(Map<Object, Object> originalMap) {
@@ -363,8 +379,10 @@ class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
 
   final MapperFn<List<Object>, List<T>> tranformFn;
 
-  const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false})
-    : super(const _List(_Any()));
+  const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false});
+
+  @override
+  _TypeRec get _typeRec => const _List(_Any());
 
   @override
   ValidatorResult<List<T>> validator(List<Object> value) => tranformFn(value);
@@ -380,8 +398,10 @@ class UntypedMapField<K extends Object, V extends Object>
 
   final MapperFn<Map<Object, Object>, Map<K, V>> tranformFn;
 
-  const UntypedMapField(this.tranformFn, {this.defaultTo, this.nullable = false})
-    : super(const _Map(_Any(), _Any()));
+  const UntypedMapField(this.tranformFn, {this.defaultTo, this.nullable = false});
+
+  @override
+  _TypeRec get _typeRec => const _Map(_Any(), _Any());
 
   @override
   ValidatorResult<Map<K, V>> validator(Map<Object, Object> value) => tranformFn(value);
@@ -457,7 +477,7 @@ class TableSchema {
   }
 }
 
-typdef Schema = TableSchema;
+typedef Schema = TableSchema;
 
 Object unwrapValue(Value val) {
   if (val is ListValue) {
