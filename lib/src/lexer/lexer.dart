@@ -307,7 +307,8 @@ class Lexer {
   }
 
   void _skipWhitespaces() {
-    while (char == 32) {
+    // 32: " ", 9: \t, 13: \r
+    while (char == 32 || char == 9 || char == 13) {
       _readChar();
     }
   }
