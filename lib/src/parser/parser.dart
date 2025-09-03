@@ -464,7 +464,11 @@ class Parser {
       if (value == null) {
         return response;
       }
-      response.list.add(EntryExpression(key, value));
+      // this gibberish is to update the set value
+      if (!response.list.add(EntryExpression(key, value))) {
+        response.list.remove(EntryExpression(key, value));
+        response.list.add(EntryExpression(key, value));
+      }
 
       // `parse` comma
       parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
