@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 void main() {
   group("testing lexer", () {
     test("intitial", () {
-      final input = "[]{}=</!=,:\t";
+      final input = "[]{}=</!=,:\t-";
 
       final tests = [
         Token(type: TokenType.LeftBracket, literal: "["),
@@ -20,6 +20,7 @@ void main() {
         Token(type: TokenType.NotEquals, literal: "!="),
         Token(type: TokenType.Comma, literal: ","),
         Token(type: TokenType.Colon, literal: ":"),
+        Token(type: TokenType.Minus, literal: "-"),
         Token(type: TokenType.Eof, literal: ""),
       ];
       final lexer = Lexer(input);
@@ -30,9 +31,9 @@ void main() {
     });
 
     test("test to fix infinite loop when ilegal character", () {
-      final input = "${String.fromCharCode(13)}q";
+      final input = "${String.fromCharCode(14)}q";
       final tests = [
-      Token(type: TokenType.Illegal, literal: String.fromCharCode(13)),
+      Token(type: TokenType.Illegal, literal: String.fromCharCode(14)),
         Token(type: TokenType.Identifier, literal: "q"),
         Token(type: TokenType.Eof, literal: ""),
       ];
