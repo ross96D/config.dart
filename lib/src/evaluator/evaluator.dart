@@ -477,6 +477,7 @@ Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarati
     case Operator.Minus:
       return switch (rightValue) {
         NumberDoubleValue v => NumberDoubleValue(-1 * v.value, v.line, v.filepath),
+        NumberIntegerValue v => NumberIntegerValue(-1 * v.value, v.line, v.filepath),
         _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
       };
     case Operator.Bang:

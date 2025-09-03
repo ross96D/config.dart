@@ -13,6 +13,7 @@ void main() {
     final input = """
 VAR1 = 'value'
 VAR2 = 12
+NEGATIVE = -12
 \$VAR3 = 'value'
 VAR_BOOL1 = true
 VAR_BOOL2 = false
@@ -50,6 +51,7 @@ map = {
       equals({
         "VAR1": "value",
         "VAR2": 12,
+        "NEGATIVE": -12,
         "VAR_BOOL1": true,
         "VAR_BOOL2": false,
         "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
