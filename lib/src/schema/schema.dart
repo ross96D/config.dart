@@ -297,7 +297,10 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
       }
     }
     if (_validator != null) {
-      return _validator(transformedList);
+      final customValidatorResult = _validator(transformedList);
+      if (customValidatorResult is! ValidatorSuccess) {
+        return customValidatorResult;
+      }
     }
     return ValidatorTransform(transformedList);
   }
@@ -362,7 +365,10 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
       transformedMap[key] = val;
     }
     if (_validator != null) {
-      return _validator(transformedMap);
+      final customValidatorResult = _validator(transformedMap);
+      if (customValidatorResult is! ValidatorSuccess) {
+        return customValidatorResult;
+      }
     }
     return ValidatorTransform(transformedMap);
   }
