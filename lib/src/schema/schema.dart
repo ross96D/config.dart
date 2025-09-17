@@ -432,9 +432,18 @@ class TableSchema {
   /// If this is true then KeyNotInSchemaError will not be emited
   final bool ignoreNotInSchema;
 
+  /// Use this function to validate or transform the final values of
+  /// the schema.
+  final Function(
+    Map<String, dynamic> values,
+    List<EvaluationError> errors,
+  )?
+  validator;
+
   const TableSchema({
     this.fields = const {},
     this.tables = const {},
+    this.validator,
     this.required = true,
     this.ignoreNotInSchema = false,
   });
@@ -505,6 +514,8 @@ class TableSchema {
         table.apply(response[key], values[key] as TableValue, errors);
       }
     }
+
+    validator?.call(response, errors);
   }
 }
 
