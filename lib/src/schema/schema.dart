@@ -434,7 +434,7 @@ class TableSchema {
 
   /// Use this function to validate or transform the final values of
   /// the schema.
-  final Function(
+  final void Function(
     Map<String, dynamic> values,
     List<EvaluationError> errors,
   )?
