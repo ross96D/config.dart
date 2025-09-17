@@ -248,6 +248,37 @@ Map = {
       }),
     );
   });
+
+  test("Nested dynamic groups", () {
+    final input = """
+Group1 {
+  Var1 = "val1"
+  Var2 = "val2"
+}
+""";
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+    expect(parser.errors.length, equals(0), reason: parser.errors.join("\n"));
+
+    final evaluator = Evaluator.eval(
+      program,
+      schema: Schema(
+        tables: {
+          "Group1": Schema(fields: {"Var1": StringField(), "Var2": StringField()}),
+          "Group4": Schema(fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)}, required: false),
+        },
+      ),
+    );
+
+    expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
+    expect(
+      evaluator.$1,
+      equals({
+        "Group1": {"Var1": "val1", "Var2": "val2"},
+      }),
+    );
+  });
 }
 
 enum SchemaTestEnum { val1, val2, val3, val4, val5 }

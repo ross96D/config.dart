@@ -141,6 +141,8 @@ class TableValue extends Value<Map<String, Value>> {
     );
   }
 
+  bool get isEmpty => value.isEmpty;
+
   Value? operator [](String key) {
     return value[key];
   }

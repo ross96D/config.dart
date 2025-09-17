@@ -416,8 +416,9 @@ class UntypedMapField<K extends Object, V extends Object>
 class TableSchema {
   final Map<String, Field> fields;
   final Map<String, TableSchema> tables;
+  final bool required;
 
-  const TableSchema({this.fields = const {}, this.tables = const {}});
+  const TableSchema({this.fields = const {}, this.tables = const {}, this.required = true});
 
   void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
@@ -477,8 +478,11 @@ class TableSchema {
           "Key: $key Value: ${values[key]}",
         );
       }
-      response[key] = <String, dynamic>{};
-      table.apply(response[key], values[key] as TableValue, errors);
+      // if values are not empty call table.apply, otherwise only call table.apply if table is required
+      if (!(values[key] as TableValue).isEmpty || table.required) {
+        response[key] = <String, dynamic>{};
+        table.apply(response[key], values[key] as TableValue, errors);
+      }
     }
   }
 }
