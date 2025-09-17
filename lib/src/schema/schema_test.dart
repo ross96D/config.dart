@@ -255,6 +255,18 @@ Group1 {
   Var1 = "val1"
   Var2 = "val2"
 }
+Group2 {
+  Var1 = "val1"
+  Var2 = "val2"
+}
+Group3 {
+  Var1 = "val1"
+  Var2 = "val2"
+  GroupeNested {
+    Var1 = "val1"
+  }
+  GroupeNested2 {}
+}
 """;
     final lexer = Lexer(input, "/path/to/file");
     final parser = Parser(lexer);
@@ -266,8 +278,12 @@ Group1 {
       schema: Schema(
         tables: {
           "Group1": Schema(fields: {"Var1": StringField(), "Var2": StringField()}),
-          "Group4": Schema(fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)}, required: false),
+          "Group4": Schema(
+            fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)},
+            required: false,
+          ),
         },
+        ignoreNotInSchema: true,
       ),
     );
 
@@ -276,6 +292,13 @@ Group1 {
       evaluator.$1,
       equals({
         "Group1": {"Var1": "val1", "Var2": "val2"},
+        "Group2": {"Var1": "val1", "Var2": "val2"},
+        "Group3": {
+          "Var1": "val1",
+          "Var2": "val2",
+          "GroupeNested": {"Var1": "val1"},
+          "GroupeNested2": {},
+        },
       }),
     );
   });

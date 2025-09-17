@@ -414,17 +414,38 @@ class UntypedMapField<K extends Object, V extends Object>
 }
 
 class TableSchema {
+  /// Field that has field validations
   final Map<String, Field> fields;
+
+  /// Field that has nested schemas validations
   final Map<String, TableSchema> tables;
+
+  /// Do not call apply when parent key was missing
+  ///
+  /// ej: Schema(tables: {"KeyNotFound": Schema(required: false)})
+  /// this does not affect the final output if required was true
+  /// then the final output would be {"KeyNotFound": {}}
+  ///
+  /// This means that a this field is ignored on root schema
   final bool required;
 
-  const TableSchema({this.fields = const {}, this.tables = const {}, this.required = true});
+  /// If this is true then KeyNotInSchemaError will not be emited
+  final bool ignoreNotInSchema;
+
+  const TableSchema({
+    this.fields = const {},
+    this.tables = const {},
+    this.required = true,
+    this.ignoreNotInSchema = false,
+  });
 
   void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
-        errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
-        response[entry.key] = entry.value.value;
+        if (!ignoreNotInSchema) {
+          errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
+        }
+        response[entry.key] = entry.value.toValue();
       }
     }
 

@@ -9,6 +9,8 @@ sealed class Value<T extends Object> {
   final String filepath;
   const Value(this.value, this.line, this.filepath);
 
+  Object toValue();
+
   Value copyWith({int? line, T? value, String? filepath}) {
     return switch (this) {
       NumberDoubleValue v => NumberDoubleValue(
@@ -66,22 +68,37 @@ sealed class NumberValue<T extends num> extends Value<T> {
 
 class NumberDoubleValue extends NumberValue<double> {
   const NumberDoubleValue(super.value, super.line, super.filepath);
+
+  @override
+  double toValue() => super.value;
 }
 
 class NumberIntegerValue extends NumberValue<int> {
   const NumberIntegerValue(super.value, super.line, super.filepath);
+
+  @override
+  int toValue() => super.value;
 }
 
 class DurationValue extends Value<Duration> {
   const DurationValue(super.value, super.line, super.filepath);
+
+  @override
+  Duration toValue() => super.value;
 }
 
 class StringValue extends Value<String> {
   const StringValue(super.value, super.line, super.filepath);
+
+  @override
+  String toValue() => super.value;
 }
 
 class BooleanValue extends Value<bool> {
   const BooleanValue(super.value, super.line, super.filepath);
+
+  @override
+  bool toValue() => super.value;
 }
 
 class ListValue extends Value<List<Value>> {
@@ -89,40 +106,22 @@ class ListValue extends Value<List<Value>> {
   const ListValue(super.value, super.line, super.filepath);
 
   List<Object> toList() {
-    return value
-        .map(
-          (e) => switch (e) {
-            TableValue() => e.toMap(),
-            ListValue() => e.toList(),
-            MapValue() => e.toMap(),
-            _ => e.value,
-          },
-        )
-        .toList();
+    return value.map((e) => e.toValue()).toList();
   }
+
+  @override
+  List<Object> toValue() => toList();
 }
 
 class MapValue extends Value<Map<Value, Value>> {
   const MapValue(super.value, super.line, super.filepath);
 
   Map<Object, Object> toMap() {
-    return value.map(
-      (key, value) => MapEntry(
-        switch (key) {
-          TableValue() => key.toMap(),
-          MapValue() => key.toMap(),
-          ListValue() => key.toList(),
-          _ => key.value,
-        },
-        switch (value) {
-          TableValue() => value.toMap(),
-          MapValue() => value.toMap(),
-          ListValue() => value.toList(),
-          _ => value.value,
-        },
-      ),
-    );
+    return value.map((key, value) => MapEntry(key.toValue(), value.toValue()));
   }
+
+  @override
+  Map<Object, Object> toValue() => toMap();
 }
 
 class TableValue extends Value<Map<String, Value>> {
@@ -131,15 +130,11 @@ class TableValue extends Value<Map<String, Value>> {
   factory TableValue.empty([int line = -1, String filepath = ""]) => TableValue({}, line, filepath);
 
   Map<String, Object> toMap() {
-    return value.map(
-      (key, value) => MapEntry(key, switch (value) {
-        TableValue() => value.toMap(),
-        MapValue() => value.toMap(),
-        ListValue() => value.toList(),
-        _ => value.value,
-      }),
-    );
+    return value.map((key, value) => MapEntry(key, value.toValue()));
   }
+
+  @override
+  Map<String, Object> toValue() => toMap();
 
   bool get isEmpty => value.isEmpty;
 
