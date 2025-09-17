@@ -280,9 +280,9 @@ Group3 {
           "Group1": Schema(fields: {"Var1": StringField(), "Var2": StringField()}),
           "Group4": Schema(
             fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)},
-            required: false,
           ),
         },
+        canBeMissingSchemas: {"Group4"},
         ignoreNotInSchema: true,
       ),
     );

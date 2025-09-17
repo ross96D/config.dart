@@ -420,14 +420,12 @@ class TableSchema {
   /// Field that has nested schemas validations
   final Map<String, TableSchema> tables;
 
-  /// Do not call apply when parent key was missing
+  /// List with all the shchemas that can be missing. The string must match
+  /// with a key in tables
   ///
-  /// ej: Schema(tables: {"KeyNotFound": Schema(required: false)})
-  /// this does not affect the final output if required was true
-  /// then the final output would be {"KeyNotFound": {}}
-  ///
-  /// This means that a this field is ignored on root schema
-  final bool required;
+  /// A schema that can be missing means that if the key is not found then
+  /// will not be included in the final output and apply function will not be called
+  final Set<String> canBeMissingSchemas;
 
   /// If this is true then KeyNotInSchemaError will not be emited
   final bool ignoreNotInSchema;
@@ -444,8 +442,8 @@ class TableSchema {
     this.fields = const {},
     this.tables = const {},
     this.validator,
-    this.required = true,
     this.ignoreNotInSchema = false,
+    this.canBeMissingSchemas = const {},
   });
 
   void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
@@ -508,8 +506,8 @@ class TableSchema {
           "Key: $key Value: ${values[key]}",
         );
       }
-      // if values are not empty call table.apply, otherwise only call table.apply if table is required
-      if (!(values[key] as TableValue).isEmpty || table.required) {
+      // if values are not empty call table.apply, otherwise only call table.apply if table cannot be missed
+      if (!(values[key] as TableValue).isEmpty || !canBeMissingSchemas.contains(key)) {
         response[key] = <String, dynamic>{};
         table.apply(response[key], values[key] as TableValue, errors);
       }
