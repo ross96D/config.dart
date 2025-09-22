@@ -233,6 +233,9 @@ Group3 {
   GroupeNested {
     Var1 = "val1"
   }
+  GroupeNested {
+    Var1 = "val1"
+  }
   GroupeNested2 {}
 }
 """;
@@ -270,6 +273,7 @@ Group3 {
             "Var1": "val1",
             "Var2": "val2",
             "GroupeNested": [
+              {"Var1": "val1"},
               {"Var1": "val1"},
             ],
             "GroupeNested2": [{}],

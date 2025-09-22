@@ -427,12 +427,12 @@ class TableSchema {
   /// will not be included in the final output and apply function will not be called
   final Set<String> canBeMissingSchemas;
 
+  /// List with all the shchemas that cannot be repeated. The string must match
+  /// with a key in tables
+  final Set<String> dontRepeted;
+
   /// If true then KeyNotInSchemaError will not be emited
   final bool ignoreNotInSchema;
-
-  /// If true then parent can contain Tables with the same name as long as they are
-  /// defined with this schema
-  final bool allowMultiples;
 
   /// Use this function to validate or transform the final values of
   /// the schema.
@@ -446,17 +446,12 @@ class TableSchema {
     this.fields = const {},
     this.tables = const {},
     this.validator,
-    this.allowMultiples = true,
     this.ignoreNotInSchema = false,
+    this.dontRepeted = const {},
     this.canBeMissingSchemas = const {},
   });
 
   void apply(String key, List<Map<String, dynamic>> response_, TableValue values, List<EvaluationError> errors) {
-    if (!allowMultiples && response_.isNotEmpty) {
-      errors.add(MultipleTableNotAllowedError(key));
-      return;
-    }
-
     Map<String, dynamic> response = {};
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
@@ -523,7 +518,10 @@ class TableSchema {
           response[key] ??= <Map<String, dynamic>>[];
           table.apply(key, response[key], t, errors);
         }
-
+        if (dontRepeted.contains(key)) {
+          errors.add(RepeatedTableError(key));
+          break;
+        }
       }
     }
 
@@ -604,4 +602,15 @@ MapValue? _coerceMap(_Map expected, MapValue actual) {
     resp.value[key] = value;
   }
   return resp;
+}
+
+class RepeatedTableError extends CustomEvaluationError {
+  final String key;
+
+  const RepeatedTableError(this.key);
+
+  @override
+  String error() {
+    return "Table with name $key is repeated but was not allowed";
+  }
 }

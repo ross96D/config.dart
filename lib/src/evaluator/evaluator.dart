@@ -766,3 +766,7 @@ abstract class ValidationError extends EvaluationError {
 
   ValidationError();
 }
+
+abstract class CustomEvaluationError extends EvaluationError {
+  const CustomEvaluationError();
+}
