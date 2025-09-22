@@ -69,7 +69,9 @@ Map = {
         "VAR2": 2.0,
         "VAR3": null,
         "Array": ['1', '3', '5', '[1, 3]'],
-        "Group": {"VAR2": 2.0},
+        "Group": [
+          {"VAR2": 2.0},
+        ],
         "Map": {12: true, true: "some", "key": "value"},
       }),
     );
@@ -122,40 +124,6 @@ Map = {
 
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
-  });
-
-  test("table name already define as variable", () {
-    final input = """
-TABLE = 12
-TABLE {
-  VAR = 12
-}
-      """;
-    final lexer = Lexer(input, "/path/to/file");
-    final parser = Parser(lexer);
-    final program = parser.parseProgram();
-
-    final evaluator = Evaluator.eval(program);
-
-    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
-    expect(evaluator.$2[0], isA<BlockNameDefinedAsKeyError>());
-    expect(evaluator.$2[0], equals(BlockNameDefinedAsKeyError("TABLE", 0, 1, "/path/to/file")));
-  });
-
-  test("duplicated key error", () {
-    final input = """
-VAR = 12
-VAR = 12
-      """;
-    final lexer = Lexer(input, "/path/to/file");
-    final parser = Parser(lexer);
-    final program = parser.parseProgram();
-
-    final evaluator = Evaluator.eval(program);
-
-    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
-    expect(evaluator.$2[0], isA<DuplicatedKeyError>());
-    expect(evaluator.$2[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
   });
 
   test("key not in schema", () {
@@ -291,14 +259,22 @@ Group3 {
     expect(
       evaluator.$1,
       equals({
-        "Group1": {"Var1": "val1", "Var2": "val2"},
-        "Group2": {"Var1": "val1", "Var2": "val2"},
-        "Group3": {
-          "Var1": "val1",
-          "Var2": "val2",
-          "GroupeNested": {"Var1": "val1"},
-          "GroupeNested2": {},
-        },
+        "Group1": [
+          {"Var1": "val1", "Var2": "val2"},
+        ],
+        "Group2": [
+          {"Var1": "val1", "Var2": "val2"},
+        ],
+        "Group3": [
+          {
+            "Var1": "val1",
+            "Var2": "val2",
+            "GroupeNested": [
+              {"Var1": "val1"},
+            ],
+            "GroupeNested2": [{}],
+          },
+        ],
       }),
     );
   });

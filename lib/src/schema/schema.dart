@@ -427,8 +427,12 @@ class TableSchema {
   /// will not be included in the final output and apply function will not be called
   final Set<String> canBeMissingSchemas;
 
-  /// If this is true then KeyNotInSchemaError will not be emited
+  /// If true then KeyNotInSchemaError will not be emited
   final bool ignoreNotInSchema;
+
+  /// If true then parent can contain Tables with the same name as long as they are
+  /// defined with this schema
+  final bool allowMultiples;
 
   /// Use this function to validate or transform the final values of
   /// the schema.
@@ -442,11 +446,18 @@ class TableSchema {
     this.fields = const {},
     this.tables = const {},
     this.validator,
+    this.allowMultiples = true,
     this.ignoreNotInSchema = false,
     this.canBeMissingSchemas = const {},
   });
 
-  void apply(Map<String, dynamic> response, TableValue values, List<EvaluationError> errors) {
+  void apply(String key, List<Map<String, dynamic>> response_, TableValue values, List<EvaluationError> errors) {
+    if (!allowMultiples && response_.isNotEmpty) {
+      errors.add(MultipleTableNotAllowedError(key));
+      return;
+    }
+
+    Map<String, dynamic> response = {};
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
         if (!ignoreNotInSchema) {
@@ -499,21 +510,25 @@ class TableSchema {
       final key = entry.key;
 
       if (values[key] == null) {
-        values[key] = TableValue.empty();
-      } else if (values[key] is! TableValue) {
+        values[key] = GroupedTableValues([TableValue.empty()], - 1, "");
+      } else if (values[key] is! GroupedTableValues) {
         throw StateError(
-          "Unreachable key is not MapValue when is declared as Table in Schema. "
+          "Unreachable: key is not MapValue when is declared as Table in Schema. "
           "Key: $key Value: ${values[key]}",
         );
       }
-      // if values are not empty call table.apply, otherwise only call table.apply if table cannot be missed
-      if (!(values[key] as TableValue).isEmpty || !canBeMissingSchemas.contains(key)) {
-        response[key] = <String, dynamic>{};
-        table.apply(response[key], values[key] as TableValue, errors);
+      for (final t in (values[key] as GroupedTableValues).value) {
+        // if values are not empty call table.apply, otherwise only call table.apply if table cannot be missed
+        if (t.value.isNotEmpty || !canBeMissingSchemas.contains(key)) {
+          response[key] ??= <Map<String, dynamic>>[];
+          table.apply(key, response[key], t, errors);
+        }
+
       }
     }
 
     validator?.call(response, errors);
+    response_.add(response);
   }
 }
 

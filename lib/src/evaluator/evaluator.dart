@@ -155,6 +155,8 @@ class TableValue extends Value<Map<String, Value>> {
 class GroupedTableValues extends Value<List<TableValue>> {
   const GroupedTableValues(super.value, super.line, super.filepath);
 
+  factory GroupedTableValues.empty([int line = -1, String filepath = ""]) => GroupedTableValues([], line, filepath);
+
   @override
   List<Map<String, Object>> toValue() {
     return value.map((e) => e.toMap()).toList();
@@ -166,13 +168,24 @@ sealed class EvaluationError {
   String error();
 }
 
+class MultipleTableNotAllowedError extends EvaluationError {
+  final String keyName;
+
+  const MultipleTableNotAllowedError(this.keyName);
+
+  @override
+  String error() {
+    return "Tables with the same name detected: $keyName";
+  }
+}
+
 class DuplicatedKeyError extends EvaluationError {
   final int lineFirst;
   final int lineSecond;
   final String filepath;
   final String keyName;
 
-  DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond, this.filepath);
+  const DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond, this.filepath);
 
   @override
   String error() {
@@ -426,13 +439,13 @@ abstract final class Evaluator {
     final blockEvaluator = _BlockEvaluator(block, declarations);
     final evaluation = blockEvaluator.eval();
 
-    Map<String, dynamic> values = {};
+    List<Map<String, dynamic>> values = [];
     if (schema != null) {
-      schema.apply(values, evaluation.result, evaluation.errors);
+      schema.apply("", values, evaluation.result, evaluation.errors);
     } else {
-      values = evaluation.result.toMap();
+      values = [evaluation.result.toMap()];
     }
-    return (values, evaluation.errors);
+    return (values[0], evaluation.errors);
   }
 }
 

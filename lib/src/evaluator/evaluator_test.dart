@@ -114,4 +114,20 @@ VAR3 = 12 / 12
       }),
     );
   });
+
+  test("duplicated key error", () {
+    final input = """
+VAR = 12
+VAR = 12
+      """;
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+
+    final evaluator = Evaluator.eval(program);
+
+    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+    expect(evaluator.$2[0], isA<DuplicatedKeyError>());
+    expect(evaluator.$2[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+  });
 }
