@@ -45,7 +45,7 @@ enum Operator {
       TokenType.Bang => Bang,
       TokenType.Equals => Equals,
       TokenType.NotEquals => NotEquals,
-      _ => throw StateError("unreachable token type $type is not an operation"),
+      _ => throw StateError("Unreachable: token type $type is not an operation"),
     };
   }
 }
