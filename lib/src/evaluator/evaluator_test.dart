@@ -55,11 +55,15 @@ map = {
         "VAR_BOOL1": true,
         "VAR_BOOL2": false,
         "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
-        "table": {"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"},
-        "table2": {
-          "VAR4": "VAL",
-          "VAR5": [1, 7, 'value'],
-        },
+        "table": [
+          {"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"},
+        ],
+        "table2": [
+          {
+            "VAR4": "VAL",
+            "VAR5": [1, 7, 'value'],
+          },
+        ],
         "map": {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
       }),
     );
@@ -103,6 +107,11 @@ VAR3 = 12 / 12
     final evaluator = Evaluator.eval(program);
 
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
-    expect(evaluator.$1, equals({"map": {"key": "val2"}}));
+    expect(
+      evaluator.$1,
+      equals({
+        "map": {"key": "val2"},
+      }),
+    );
   });
 }

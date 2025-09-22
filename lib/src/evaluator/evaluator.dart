@@ -43,6 +43,11 @@ sealed class Value<T extends Object> {
         line ?? this.line,
         filepath ?? this.filepath,
       ),
+      GroupedTableValues v => GroupedTableValues(
+        value as List<TableValue>? ?? v.value,
+        line ?? this.line,
+        filepath ?? this.filepath,
+      ),
       MapValue v => MapValue(
         value as Map<Value, Value>? ?? v.value,
         line ?? this.line,
@@ -147,6 +152,15 @@ class TableValue extends Value<Map<String, Value>> {
   }
 }
 
+class GroupedTableValues extends Value<List<TableValue>> {
+  const GroupedTableValues(super.value, super.line, super.filepath);
+
+  @override
+  List<Map<String, Object>> toValue() {
+    return value.map((e) => e.toMap()).toList();
+  }
+}
+
 sealed class EvaluationError {
   const EvaluationError();
   String error();
@@ -186,6 +200,7 @@ second occurrence: $filepath:${lineSecond + 1}:0
   int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond, filepath]);
 }
 
+@Deprecated("Define sevearl blocks with the same name is no longer invalid")
 class BlockNameDefinedAsKeyError extends EvaluationError {
   // TODO final Position tablePosition;
   final int keyLine;
@@ -359,6 +374,7 @@ class _BlockEvaluator {
           final key = line.identifer.value;
           final value = _resolveExpr(line.expr, allDeclarations);
           if (result.value.containsKey(key)) {
+            // TODO: reason about only using the first element
             final lineFirst = result.value[key]!.line;
             errors.add(DuplicatedKeyError(key, lineFirst, value.line, value.filepath));
           }
@@ -370,22 +386,27 @@ class _BlockEvaluator {
 
         case Block():
           final key = line.identifer.value;
-          if (result.value.containsKey(key)) {
-            final keyLineNum = result.value[key]!.line;
-            final lineNum = line.token.pos!.start.lineNumber;
-            final filepath = line.token.pos!.filepath;
-            errors.add(BlockNameDefinedAsKeyError(key, keyLineNum, lineNum, filepath));
+          final lineNumber = line.identifer.token.pos!.start.lineNumber;
+          final filepath = line.identifer.token.pos!.filepath;
+          if (!result.value.containsKey(key)) {
+            result.value[key] = GroupedTableValues([], lineNumber, filepath);
+          } else if (result.value[key] is! GroupedTableValues) {
+            // TODO: reason about only using the first element
+            final lineFirst = result.value[key]!.line;
+            errors.add(DuplicatedKeyError(key, lineFirst, lineNumber, filepath));
             break;
           }
           final evaluator = _BlockEvaluator(line, allDeclarations);
           final res = evaluator.eval();
           errors.addAll(res.errors);
-          result[key] = res.result;
-          _ownDeclarations[key] = TableValue(
-            evaluator._ownDeclarations,
-            line.token.pos!.start.lineNumber,
-            line.token.pos!.filepath,
-          );
+          final resVal = res.result.copyWith(
+            line: line.token.pos!.start.lineNumber,
+            filepath: line.token.pos!.filepath,
+          ) as TableValue;
+          (result[key]! as GroupedTableValues).value.add(resVal);
+          // using the last TableValue as the key definition in declarations
+          // there are other stuff we can do.. like merging
+          _ownDeclarations[key] = resVal;
       }
     }
 
@@ -420,7 +441,7 @@ Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
   final filepath = expr.token.pos!.filepath;
   switch (expr) {
     case Identifier():
-      // Should we fail here??
+      // TODO fail here and handle fail upper in the chain
       return (declarations[expr.value] ?? StringValue("", -1, "")).copyWith(
         line: line,
         filepath: filepath,
@@ -702,8 +723,9 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
           ListValue() => "[${value.value.join(", ")}]",
           MapValue() =>
             "{${value.value.entries.map((e) => '${e.key.value}: ${e.value.value}').join(', ')}}",
-          // TODO: Handle this case.
+          // TODO: Handle this cases.
           TableValue() => throw UnimplementedError(),
+          GroupedTableValues() => throw UnimplementedError(),
         });
       }
       if (i < codeUnits.length) {
