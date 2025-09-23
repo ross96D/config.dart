@@ -436,11 +436,7 @@ class TableSchema {
 
   /// Use this function to validate or transform the final values of
   /// the schema.
-  final void Function(
-    Map<String, dynamic> values,
-    List<EvaluationError> errors,
-  )?
-  validator;
+  final void Function(Map<String, dynamic> values, List<EvaluationError> errors)? validator;
 
   const TableSchema({
     this.fields = const {},
@@ -451,7 +447,12 @@ class TableSchema {
     this.canBeMissingSchemas = const {},
   });
 
-  void apply(String key, List<Map<String, dynamic>> response_, TableValue values, List<EvaluationError> errors) {
+  void apply(
+    String key,
+    List<Map<String, dynamic>> response_,
+    TableValue values,
+    List<EvaluationError> errors,
+  ) {
     Map<String, dynamic> response = {};
     for (final entry in values.value.entries) {
       if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
@@ -505,19 +506,22 @@ class TableSchema {
       final key = entry.key;
 
       if (values[key] == null) {
-        values[key] = GroupedTableValues([TableValue.empty()], - 1, "");
-      } else if (values[key] is! GroupedTableValues) {
+        if (!canBeMissingSchemas.contains(key)) {
+          values[key] = GroupedTableValues([TableValue.empty()], -1, "");
+        } else {
+          continue;
+        }
+      }
+      if (values[key] is! GroupedTableValues) {
         throw StateError(
           "Unreachable: key is not MapValue when is declared as Table in Schema. "
           "Key: $key Value: ${values[key]}",
         );
       }
       for (final t in (values[key] as GroupedTableValues).value) {
-        // if values are not empty call table.apply, otherwise only call table.apply if table cannot be missed
-        if (t.value.isNotEmpty || !canBeMissingSchemas.contains(key)) {
-          response[key] ??= <Map<String, dynamic>>[];
-          table.apply(key, response[key], t, errors);
-        }
+        response[key] ??= <Map<String, dynamic>>[];
+        table.apply(key, response[key], t, errors);
+
         if (dontRepeted.contains(key)) {
           errors.add(RepeatedTableError(key));
           break;

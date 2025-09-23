@@ -252,13 +252,26 @@ Group3 {
           "Group4": Schema(
             fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)},
           ),
+          "Group3": Schema(
+            ignoreNotInSchema: true,
+            tables: {
+              "GroupeNested2": Schema(
+                fields: {"k1": StringField(defaultTo: "v1")}
+              ),
+              "GroupeNested3": Schema(
+                fields: {"k1": StringField(defaultTo: "v1")}
+              ),
+            },
+            canBeMissingSchemas: {"GroupeNested2", "GroupeNested3"},
+          ),
         },
-        canBeMissingSchemas: {"Group4"},
+        canBeMissingSchemas: {"Group4", "GroupeNested2", "GroupeNested3"},
         ignoreNotInSchema: true,
       ),
     );
 
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
+    // print(evaluator.$1[]);
     expect(
       evaluator.$1,
       equals({
@@ -276,7 +289,7 @@ Group3 {
               {"Var1": "val1"},
               {"Var1": "val1"},
             ],
-            "GroupeNested2": [{}],
+            "GroupeNested2": [{"k1": "v1"}],
           },
         ],
       }),
