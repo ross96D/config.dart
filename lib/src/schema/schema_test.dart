@@ -255,12 +255,8 @@ Group3 {
           "Group3": Schema(
             ignoreNotInSchema: true,
             tables: {
-              "GroupeNested2": Schema(
-                fields: {"k1": StringField(defaultTo: "v1")}
-              ),
-              "GroupeNested3": Schema(
-                fields: {"k1": StringField(defaultTo: "v1")}
-              ),
+              "GroupeNested2": Schema(fields: {"k1": StringField(defaultTo: "v1")}),
+              "GroupeNested3": Schema(fields: {"k1": StringField(defaultTo: "v1")}),
             },
             canBeMissingSchemas: {"GroupeNested2", "GroupeNested3"},
           ),
@@ -289,11 +285,56 @@ Group3 {
               {"Var1": "val1"},
               {"Var1": "val1"},
             ],
-            "GroupeNested2": [{"k1": "v1"}],
+            "GroupeNested2": [
+              {"k1": "v1"},
+            ],
           },
         ],
       }),
     );
+  });
+
+  test("keep insertion order", () {
+    final input = """
+VAR2 = 12
+VAR = 12
+VAR5 = 12
+Group3 {}
+Group1 {}
+Group2 {}
+      """;
+
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
+
+    final evaluator = Evaluator.eval(
+      program,
+      schema: Schema(
+        fields: {"VAR": IntegerNumberField(), "VAR2": IntegerNumberField(), "VAR5": IntegerNumberField()},
+        tables: {
+          "Group1": Schema(),
+          "Group2": Schema(),
+          "Group3": Schema(),
+        },
+      ),
+    );
+
+    final keys = evaluator.$1.keys.iterator;
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR2"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR5"));
+
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group3"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group1"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group2"));
+    expect(keys.moveNext(), equals(false));
   });
 }
 

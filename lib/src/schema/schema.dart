@@ -1,5 +1,7 @@
 // ignore_for_file: type_literal_in_constant_pattern
 
+import 'dart:collection';
+
 import 'package:config/config.dart';
 import 'package:config/src/types/duration/duration.dart';
 import 'dart:core' as core;
@@ -453,13 +455,21 @@ class TableSchema {
     TableValue values,
     List<EvaluationError> errors,
   ) {
-    Map<String, dynamic> response = {};
+    final response = <String, dynamic>{};
     for (final entry in values.value.entries) {
-      if (!fields.containsKey(entry.key) && !tables.keys.contains(entry.key)) {
+      final key = entry.key;
+      if (!fields.containsKey(key) && !tables.keys.contains(key)) {
         if (!ignoreNotInSchema) {
-          errors.add(KeyNotInSchemaError(entry.key, entry.value.line, entry.value.filepath));
+          errors.add(KeyNotInSchemaError(key, entry.value.line, entry.value.filepath));
         }
-        response[entry.key] = entry.value.toValue();
+        response[key] = entry.value.toValue();
+      } else {
+        // sets a default value here so i can keep iteration orders
+        if (fields.containsKey(key)) {
+          response[key] = fields[key]!.defaultTo;
+        } else {
+          response[key] = <Map<String, dynamic>>[];
+        }
       }
     }
 
@@ -519,7 +529,6 @@ class TableSchema {
         );
       }
       for (final t in (values[key] as GroupedTableValues).value) {
-        response[key] ??= <Map<String, dynamic>>[];
         table.apply(key, response[key], t, errors);
 
         if (dontRepeted.contains(key)) {

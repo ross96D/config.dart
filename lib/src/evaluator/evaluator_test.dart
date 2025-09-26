@@ -130,4 +130,38 @@ VAR = 12
     expect(evaluator.$2[0], isA<DuplicatedKeyError>());
     expect(evaluator.$2[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
   });
+
+  test("keep insertion order", () {
+    final input = """
+VAR2 = 12
+VAR = 12
+VAR5 = 12
+Group3 {}
+Group1 {}
+Group2 {}
+      """;
+
+      final lexer = Lexer(input, "/path/to/file");
+      final parser = Parser(lexer);
+      final program = parser.parseProgram();
+
+      final evaluator = Evaluator.eval(program);
+
+
+      final keys = evaluator.$1.keys.iterator;
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("VAR2"));
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("VAR"));
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("VAR5"));
+
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("Group3"));
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("Group1"));
+      expect(keys.moveNext(), equals(true));
+      expect(keys.current, equals("Group2"));
+      expect(keys.moveNext(), equals(false));
+  });
 }
