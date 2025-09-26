@@ -229,6 +229,10 @@ class Parser {
   Line? _parseIdentifierStart() {
     assert(_currenToken.type == TokenType.Identifier);
     final identifier = Identifier(_currenToken.literal, _currenToken);
+    // allows EmptyBlockWithOutbraces syntax
+    if (_peekToken.type == TokenType.NewLine || _peekToken.type == TokenType.Eof) {
+      return Block(identifier, [], identifier.token);
+    }
     if (!_expectPeek(TokenType.Assign, TokenType.LeftBrace)) {
       return null;
     }

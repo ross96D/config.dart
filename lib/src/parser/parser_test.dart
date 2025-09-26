@@ -242,4 +242,29 @@ mapEmpty = {}
       expect(program.toString(), equals("var = ${t.$2}"));
     }
   });
+
+  test("Empty named block syntax", () {
+    final input = """
+GroupWithBraces {}
+GroupWithoutBraces
+""";
+
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          Block(Identifier("GroupWithBraces"), []),
+          Block(Identifier("GroupWithoutBraces"), []),
+        ]),
+      ),
+    );
+  });
 }
