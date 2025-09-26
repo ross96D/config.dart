@@ -1,7 +1,5 @@
 // ignore_for_file: type_literal_in_constant_pattern
 
-import 'dart:collection';
-
 import 'package:config/config.dart';
 import 'package:config/src/types/duration/duration.dart';
 import 'dart:core' as core;
