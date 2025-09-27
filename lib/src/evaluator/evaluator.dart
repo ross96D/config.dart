@@ -129,12 +129,31 @@ class BlockData {
   final Map<String, Object?> fields;
   final List<(String, BlockData)> blocks;
 
-  BlockData(this.fields, this.blocks);
+  const BlockData(this.fields, this.blocks);
+
+  const BlockData.constEmpty() : fields = const {}, blocks = const [];
 
   factory BlockData.empty() => BlockData({}, []);
 
   bool blockContainsKey(String key) {
     return blocks.any((a) => a.$1 == key);
+  }
+
+  BlockData? firstBlockWith(String key) {
+    for (final block in blocks) {
+      if (block.$1 == key) {
+        return block.$2;
+      }
+    }
+    return null;
+  }
+
+  Iterable<BlockData> blocksWith(String key) sync* {
+    for (final block in blocks) {
+      if (block.$1 == key) {
+        yield block.$2;
+      }
+    }
   }
 
   Iterable<String> keys() sync* {
@@ -156,7 +175,7 @@ class BlockData {
   }
 
   @override
-  bool operator==(covariant BlockData other) {
+  bool operator ==(covariant BlockData other) {
     return mapEquals(fields, other.fields) && listEquals(blocks, other.blocks);
   }
 }
