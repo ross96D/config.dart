@@ -413,12 +413,12 @@ class UntypedMapField<K extends Object, V extends Object>
   ValidatorResult<Map<K, V>> validator(Map<Object, Object> value) => tranformFn(value);
 }
 
-class TableSchema {
+class BlockSchema {
   /// Field that has field validations
   final Map<String, Field> fields;
 
   /// Field that has nested schemas validations
-  final Map<String, TableSchema> tables;
+  final Map<String, BlockSchema> blocks;
 
   /// List with all the shchemas that can be missing. The string must match
   /// with a key in tables
@@ -436,112 +436,114 @@ class TableSchema {
 
   /// Use this function to validate or transform the final values of
   /// the schema.
-  final void Function(Map<String, dynamic> values, List<EvaluationError> errors)? validator;
+  final void Function(BlockData values, List<EvaluationError> errors)? validator;
 
-  const TableSchema({
+  const BlockSchema({
     this.fields = const {},
-    this.tables = const {},
+    this.blocks = const {},
     this.validator,
     this.ignoreNotInSchema = false,
     this.dontRepeted = const {},
     this.canBeMissingSchemas = const {},
   });
 
-  void apply(
-    String key,
-    List<Map<String, dynamic>> response_,
-    TableValue values,
-    List<EvaluationError> errors,
-  ) {
-    final response = <String, dynamic>{};
-    for (final entry in values.value.entries) {
-      final key = entry.key;
-      if (!fields.containsKey(key) && !tables.keys.contains(key)) {
-        if (!ignoreNotInSchema) {
-          errors.add(KeyNotInSchemaError(key, entry.value.line, entry.value.filepath));
-        }
-        response[key] = entry.value.toValue();
-      } else {
-        // sets a default value here so i can keep iteration orders
-        if (fields.containsKey(key)) {
-          response[key] = fields[key]!.defaultTo;
+  void apply(String key, BlockData response, BlockValue values, List<EvaluationError> errors) {
+    // fields
+    {
+      for (final entry in values.value.fields.entries) {
+        final key = entry.key;
+        if (!fields.containsKey(key)) {
+          if (!ignoreNotInSchema) {
+            errors.add(KeyNotInSchemaError(key, entry.value.line, entry.value.filepath));
+          }
+          response.fields[key] = entry.value.toValue();
         } else {
-          response[key] = <Map<String, dynamic>>[];
+          // sets a default value here so i can keep insertion order from original data
+          response.fields[key] = fields[key]!.defaultTo;
+        }
+      }
+
+      for (final entry in fields.entries) {
+        final field = entry.value;
+        final key = entry.key;
+
+        if (!values.value.fields.containsKey(key)) {
+          if (field.defaultTo == null && !field.nullable) {
+            errors.add(RequiredKeyIsMissing(key));
+          } else {
+            response.fields[key] = field.defaultTo;
+          }
+        } else {
+          final evalValue = values.value.fields[key]!;
+          final coerceValue = _coerceType(field._typeRec, evalValue);
+          if (coerceValue == null) {
+            errors.add(
+              ConflictTypeError(
+                key,
+                evalValue.line,
+                evalValue.filepath,
+                "${field._typeRec}",
+                "${evalValue.value.runtimeType}",
+              ),
+            );
+            continue;
+          }
+
+          switch (field.validator(unwrapValue(coerceValue))) {
+            case ValidatorSuccess<Object>():
+              response.fields[key] = coerceValue.value;
+            case ValidatorTransform result:
+              response.fields[key] = result.value;
+            case ValidatorError result:
+              result.value.original = coerceValue;
+              errors.add(result.value);
+          }
         }
       }
     }
 
-    for (final entry in fields.entries) {
-      final field = entry.value;
-      final key = entry.key;
-
-      if (values[key] == null) {
-        if (field.defaultTo == null && !field.nullable) {
-          errors.add(RequiredKeyIsMissing(key));
-        } else {
-          response[key] = field.defaultTo;
-        }
-      } else {
-        final evalValue = values[key]!;
-        final coerceValue = _coerceType(field._typeRec, evalValue);
-        if (coerceValue == null) {
-          errors.add(
-            ConflictTypeError(
-              key,
-              evalValue.line,
-              evalValue.filepath,
-              "${field._typeRec}",
-              "${evalValue.value.runtimeType}",
-            ),
-          );
+    // blocks
+    {
+      for (final block in values.value.blocks) {
+        final key = block.$1;
+        final schema = blocks[key];
+        if (schema == null) {
+          if (!ignoreNotInSchema) {
+            errors.add(KeyNotInSchemaError(key, block.$2.line, block.$2.filepath));
+          }
+          response.blocks.add((key, block.$2.toValue()));
           continue;
         }
-
-        switch (field.validator(unwrapValue(coerceValue))) {
-          case ValidatorSuccess<Object>():
-            response[key] = coerceValue.value;
-          case ValidatorTransform result:
-            response[key] = result.value;
-          case ValidatorError result:
-            result.value.original = coerceValue;
-            errors.add(result.value);
-        }
-      }
-    }
-
-    for (final entry in tables.entries) {
-      final table = entry.value;
-      final key = entry.key;
-
-      if (values[key] == null) {
-        if (!canBeMissingSchemas.contains(key)) {
-          values[key] = GroupedTableValues([TableValue.empty()], -1, "");
-        } else {
+        // sets a default value here so i can keep insertion order from original data
+        if (dontRepeted.contains(key) && response.blockContainsKey(key)) {
+          errors.add(RepeatedBlockError(key));
           continue;
         }
+        response.blocks.add((key, BlockData.empty()));
+        schema.apply(key, response.blocks.last.$2, block.$2, errors);
       }
-      if (values[key] is! GroupedTableValues) {
-        throw StateError(
-          "Unreachable: key is not MapValue when is declared as Table in Schema. "
-          "Key: $key Value: ${values[key]}",
-        );
-      }
-      for (final t in (values[key] as GroupedTableValues).value) {
-        table.apply(key, response[key], t, errors);
 
-        if (dontRepeted.contains(key)) {
-          errors.add(RepeatedTableError(key));
-          break;
+      /// Add blocks that cannot be missing
+      for (final entry in blocks.entries) {
+        final schema = entry.value;
+        final key = entry.key;
+
+        if (!values.value.blockContainsKey(key)) {
+          if (!canBeMissingSchemas.contains(key)) {
+            response.blocks.add((key, BlockData.empty()));
+            schema.apply(key, response.blocks.last.$2, BlockValue.empty(), errors);
+          } else {
+            continue;
+          }
         }
       }
     }
 
     validator?.call(response, errors);
-    response_.add(response);
   }
 }
 
-typedef Schema = TableSchema;
+typedef Schema = BlockSchema;
 
 Object unwrapValue(Value val) {
   if (val is ListValue) {
@@ -615,10 +617,10 @@ MapValue? _coerceMap(_Map expected, MapValue actual) {
   return resp;
 }
 
-class RepeatedTableError extends CustomEvaluationError {
+class RepeatedBlockError extends CustomEvaluationError {
   final String key;
 
-  const RepeatedTableError(this.key);
+  const RepeatedBlockError(this.key);
 
   @override
   String error() {

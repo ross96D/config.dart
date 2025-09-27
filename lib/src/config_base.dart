@@ -14,12 +14,12 @@ class EvaluationParseError extends EvaluationResult {
 
 class EvaluationValidationError extends EvaluationResult {
   final List<EvaluationError> errors;
-  final Map<String, dynamic> values;
+  final BlockData values;
   EvaluationValidationError(this.errors, this.values);
 }
 
 class EvaluationSuccess extends EvaluationResult {
-  final Map<String, dynamic> values;
+  final BlockData values;
   EvaluationSuccess(this.values);
 }
 

@@ -1,4 +1,5 @@
 import 'package:config/src/ast/ast.dart';
+import 'package:config/src/compare_utils.dart';
 import 'package:config/src/schema/schema.dart';
 import 'package:config/src/tokens/tokens.dart';
 import 'package:config/src/types/duration/duration.dart';
@@ -38,13 +39,8 @@ sealed class Value<T extends Object> {
         line ?? this.line,
         filepath ?? this.filepath,
       ),
-      TableValue v => TableValue(
-        value as Map<String, Value>? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      GroupedTableValues v => GroupedTableValues(
-        value as List<TableValue>? ?? v.value,
+      BlockValue v => BlockValue(
+        value as BlockValueData? ?? v.value,
         line ?? this.line,
         filepath ?? this.filepath,
       ),
@@ -129,38 +125,116 @@ class MapValue extends Value<Map<Value, Value>> {
   Map<Object, Object> toValue() => toMap();
 }
 
-class TableValue extends Value<Map<String, Value>> {
-  const TableValue(super.value, super.line, super.filepath);
+class BlockData {
+  final Map<String, Object?> fields;
+  final List<(String, BlockData)> blocks;
 
-  factory TableValue.empty([int line = -1, String filepath = ""]) => TableValue({}, line, filepath);
+  BlockData(this.fields, this.blocks);
 
-  Map<String, Object> toMap() {
-    return value.map((key, value) => MapEntry(key, value.toValue()));
+  factory BlockData.empty() => BlockData({}, []);
+
+  bool blockContainsKey(String key) {
+    return blocks.any((a) => a.$1 == key);
+  }
+
+  Iterable<String> keys() sync* {
+    for (final key in fields.keys) {
+      yield key;
+    }
+    for (final entry in blocks) {
+      yield entry.$1;
+    }
+  }
+
+  (Map<String, Object?>, List<(String, Object)>) toData() {
+    return (fields, blocks.map((e) => (e.$1, e.$2.toData())).toList());
   }
 
   @override
-  Map<String, Object> toValue() => toMap();
-
-  bool get isEmpty => value.isEmpty;
-
-  Value? operator [](String key) {
-    return value[key];
+  String toString() {
+    return "${toData()}";
   }
 
-  void operator []=(String key, Value val) {
-    value[key] = val;
+  @override
+  bool operator==(covariant BlockData other) {
+    return mapEquals(fields, other.fields) && listEquals(blocks, other.blocks);
   }
 }
 
-class GroupedTableValues extends Value<List<TableValue>> {
-  const GroupedTableValues(super.value, super.line, super.filepath);
+class BlockValueData {
+  final Map<String, Value> fields;
+  final List<(String, BlockValue)> blocks;
 
-  factory GroupedTableValues.empty([int line = -1, String filepath = ""]) => GroupedTableValues([], line, filepath);
+  const BlockValueData(this.fields, this.blocks);
+
+  factory BlockValueData.empty() => BlockValueData({}, []);
+
+  bool containsKey(String key) {
+    if (fields.containsKey(key)) {
+      return true;
+    }
+    return blockContainsKey(key);
+  }
+
+  bool blockContainsKey(String key) {
+    return blocks.any((a) => a.$1 == key);
+  }
+
+  Iterable<({String key, Value value, bool isBlock})> entries() sync* {
+    for (final key in fields.keys) {
+      yield (key: key, value: fields[key]!, isBlock: false);
+    }
+    for (final entry in blocks) {
+      yield (key: entry.$1, value: entry.$2, isBlock: true);
+    }
+  }
+
+  Iterable<String> keys() sync* {
+    for (final key in fields.keys) {
+      yield key;
+    }
+    for (final entry in blocks) {
+      yield entry.$1;
+    }
+  }
+
+  Value? operator [](String key) {
+    Value? result = fields[key];
+    if (result != null) {
+      return result;
+    }
+    // TODO maybe this should  return the last block where key is equal to the the block name
+    // first we need to figure it out the access rules
+    final idx = blocks.indexWhere((e) => e.$1 == key);
+    if (idx != -1) {
+      return blocks[idx].$2;
+    }
+    return null;
+  }
+
+  bool get isEmpty => fields.isEmpty && blocks.isEmpty;
+  bool get isNotEmpty => !isEmpty;
+}
+
+class BlockValue extends Value<BlockValueData> {
+  const BlockValue(super.value, super.line, super.filepath);
+
+  factory BlockValue.empty([int line = -1, String filepath = ""]) =>
+      BlockValue(BlockValueData.empty(), line, filepath);
 
   @override
-  List<Map<String, Object>> toValue() {
-    return value.map((e) => e.toMap()).toList();
+  BlockData toValue() {
+    final response = BlockData.empty();
+    for (final entry in super.value.fields.entries) {
+      response.fields[entry.key] = entry.value.toValue();
+    }
+    for (final block in super.value.blocks) {
+      response.blocks.add((block.$1, block.$2.toValue()));
+    }
+    return response;
   }
+
+  bool get isEmpty => value.isEmpty;
 }
 
 sealed class EvaluationError {
@@ -360,7 +434,7 @@ class RequiredKeyIsMissing extends EvaluationError {
 
 class _BlockEvaluation {
   final List<EvaluationError> errors;
-  final TableValue result;
+  final BlockValue result;
 
   _BlockEvaluation(this.result, this.errors);
 }
@@ -378,7 +452,7 @@ class _BlockEvaluator {
       _ownDeclarations = {};
 
   _BlockEvaluation eval() {
-    final result = TableValue.empty();
+    final result = BlockValue.empty();
     final errors = <EvaluationError>[];
 
     for (final line in block.lines) {
@@ -391,7 +465,7 @@ class _BlockEvaluator {
             final lineFirst = result.value[key]!.line;
             errors.add(DuplicatedKeyError(key, lineFirst, value.line, value.filepath));
           }
-          result[key] = value;
+          result.value.fields[key] = value;
           _ownDeclarations[key] = value;
 
         case DeclarationLine():
@@ -401,22 +475,23 @@ class _BlockEvaluator {
           final key = line.identifer.value;
           final lineNumber = line.identifer.token.pos!.start.lineNumber;
           final filepath = line.identifer.token.pos!.filepath;
-          if (!result.value.containsKey(key)) {
-            result.value[key] = GroupedTableValues([], lineNumber, filepath);
-          } else if (result.value[key] is! GroupedTableValues) {
-            // TODO: reason about only using the first element
+
+          if (result.value.fields.containsKey(key)) {
             final lineFirst = result.value[key]!.line;
             errors.add(DuplicatedKeyError(key, lineFirst, lineNumber, filepath));
             break;
           }
+
           final evaluator = _BlockEvaluator(line, allDeclarations);
           final res = evaluator.eval();
           errors.addAll(res.errors);
-          final resVal = res.result.copyWith(
-            line: line.token.pos!.start.lineNumber,
-            filepath: line.token.pos!.filepath,
-          ) as TableValue;
-          (result[key]! as GroupedTableValues).value.add(resVal);
+          final resVal =
+              res.result.copyWith(
+                    line: line.token.pos!.start.lineNumber,
+                    filepath: line.token.pos!.filepath,
+                  )
+                  as BlockValue;
+          result.value.blocks.add((key, resVal));
           // using the last TableValue as the key definition in declarations
           // there are other stuff we can do.. like merging
           _ownDeclarations[key] = resVal;
@@ -428,7 +503,7 @@ class _BlockEvaluator {
 }
 
 abstract final class Evaluator {
-  static (Map<String, dynamic> values, List<EvaluationError> errors, Map<String, dynamic> original) eval(
+  static (BlockData values, List<EvaluationError> errors) eval(
     Program program, {
     Map<String, Value>? declarations,
     Schema? schema,
@@ -439,13 +514,13 @@ abstract final class Evaluator {
     final blockEvaluator = _BlockEvaluator(block, declarations);
     final evaluation = blockEvaluator.eval();
 
-    List<Map<String, dynamic>> values = [];
+    BlockData values = BlockData.empty();
     if (schema != null) {
       schema.apply("", values, evaluation.result, evaluation.errors);
     } else {
-      values = [evaluation.result.toMap()];
+      values = evaluation.result.toValue();
     }
-    return (values[0], evaluation.errors, evaluation.result.toMap());
+    return (values, evaluation.errors);
   }
 }
 
@@ -737,8 +812,7 @@ String _resolveInterpolableString(String str, Map<String, Value> declarations) {
           MapValue() =>
             "{${value.value.entries.map((e) => '${e.key.value}: ${e.value.value}').join(', ')}}",
           // TODO: Handle this cases.
-          TableValue() => throw UnimplementedError(),
-          GroupedTableValues() => throw UnimplementedError(),
+          BlockValue() => throw UnimplementedError(),
         });
       }
       if (i < codeUnits.length) {

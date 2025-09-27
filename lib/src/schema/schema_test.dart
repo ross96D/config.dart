@@ -12,7 +12,7 @@ void main() {
     final schema = Schema(fields: {"VAR2": DoubleNumberField()});
     final evaluator = Evaluator.eval(program, schema: schema);
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join("\n"));
-    expect(evaluator.$1, equals({"VAR2": 2.0}));
+    expect(evaluator.$1, equals(BlockData({"VAR2": 2.0}, [])));
   });
 
   test("schema success", () {
@@ -54,8 +54,8 @@ Map = {
         "Array": UntypedListField(transformList),
         "Map": UntypedMapField(transformMap),
       },
-      tables: {
-        "Group": TableSchema(fields: {"VAR2": DoubleNumberField()}),
+      blocks: {
+        "Group": BlockSchema(fields: {"VAR2": DoubleNumberField()}),
       },
     );
 
@@ -64,16 +64,20 @@ Map = {
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join("\n"));
     expect(
       evaluator.$1,
-      equals({
-        "VAR1": "value",
-        "VAR2": 2.0,
-        "VAR3": null,
-        "Array": ['1', '3', '5', '[1, 3]'],
-        "Group": [
-          {"VAR2": 2.0},
-        ],
-        "Map": {12: true, true: "some", "key": "value"},
-      }),
+      equals(
+        BlockData(
+          {
+            "VAR1": "value",
+            "VAR2": 2.0,
+            "VAR3": null,
+            "Array": ['1', '3', '5', '[1, 3]'],
+            "Map": {12: true, true: "some", "key": "value"},
+          },
+          [
+            ("Group", BlockData({"VAR2": 2.0}, [])),
+          ],
+        ),
+      ),
     );
 
     expect(evaluator.$2, isEmpty);
@@ -109,10 +113,10 @@ Map = {
     final schema = Schema(fields: {"VAR1": StringField(defaultTo: "VALUE")});
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.$1, equals({"VAR1": "VALUE"}));
+    expect(evaluator.$1, equals(BlockData({"VAR1": "VALUE"}, [])));
   });
 
-  test("schema default value", () {
+  test("schema require value", () {
     final input = "";
 
     final lexer = Lexer(input, "/path/to/file");
@@ -138,7 +142,7 @@ Map = {
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<KeyNotInSchemaError>());
     expect(evaluator.$2[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
-    expect(evaluator.$1, equals({"VAR": 12}));
+    expect(evaluator.$1, equals(BlockData({"VAR": 12}, [])));
   });
 
   test("type conflict", () {
@@ -186,9 +190,11 @@ VAR = ["12", "zome", "item"]
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
     expect(
       evaluator.$1,
-      equals({
-        "VAR": ["12", "zome", "item"],
-      }),
+      equals(
+        BlockData({
+          "VAR": ["12", "zome", "item"],
+        }, []),
+      ),
     );
   });
 
@@ -211,9 +217,11 @@ Map = {
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
     expect(
       evaluator.$1,
-      equals({
-        "Map": {"Something": SchemaTestEnum.val1, "Something3": SchemaTestEnum.val2},
-      }),
+      equals(
+        BlockData({
+          "Map": {"Something": SchemaTestEnum.val1, "Something3": SchemaTestEnum.val2},
+        }, []),
+      ),
     );
   });
 
@@ -247,14 +255,14 @@ Group3 {
     final evaluator = Evaluator.eval(
       program,
       schema: Schema(
-        tables: {
+        blocks: {
           "Group1": Schema(fields: {"Var1": StringField(), "Var2": StringField()}),
           "Group4": Schema(
             fields: {"Var1": StringField(nullable: true), "Var2": StringField(nullable: true)},
           ),
           "Group3": Schema(
             ignoreNotInSchema: true,
-            tables: {
+            blocks: {
               "GroupeNested2": Schema(fields: {"k1": StringField(defaultTo: "v1")}),
               "GroupeNested3": Schema(fields: {"k1": StringField(defaultTo: "v1")}),
             },
@@ -267,30 +275,25 @@ Group3 {
     );
 
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
-    // print(evaluator.$1[]);
     expect(
       evaluator.$1,
-      equals({
-        "Group1": [
-          {"Var1": "val1", "Var2": "val2"},
-        ],
-        "Group2": [
-          {"Var1": "val1", "Var2": "val2"},
-        ],
-        "Group3": [
-          {
-            "Var1": "val1",
-            "Var2": "val2",
-            "GroupeNested": [
-              {"Var1": "val1"},
-              {"Var1": "val1"},
-            ],
-            "GroupeNested2": [
-              {"k1": "v1"},
-            ],
-          },
-        ],
-      }),
+      equals(
+        BlockData({}, [
+          ("Group1", BlockData({"Var1": "val1", "Var2": "val2"}, [])),
+          ("Group2", BlockData({"Var1": "val1", "Var2": "val2"}, [])),
+          (
+            "Group3",
+            BlockData(
+              {"Var1": "val1", "Var2": "val2"},
+              [
+                ("GroupeNested", BlockData({"Var1": "val1"}, [])),
+                ("GroupeNested", BlockData({"Var1": "val1"}, [])),
+                ("GroupeNested2", BlockData({"k1": "v1"}, [])),
+              ],
+            ),
+          ),
+        ]),
+      ),
     );
   });
 
@@ -302,6 +305,7 @@ VAR5 = 12
 Group3 {}
 Group1 {}
 Group2 {}
+Group3 {}
       """;
 
     final lexer = Lexer(input, "/path/to/file");
@@ -311,16 +315,16 @@ Group2 {}
     final evaluator = Evaluator.eval(
       program,
       schema: Schema(
-        fields: {"VAR": IntegerNumberField(), "VAR2": IntegerNumberField(), "VAR5": IntegerNumberField()},
-        tables: {
-          "Group1": Schema(),
-          "Group2": Schema(),
-          "Group3": Schema(),
+        fields: {
+          "VAR": IntegerNumberField(),
+          "VAR2": IntegerNumberField(),
+          "VAR5": IntegerNumberField(),
         },
+        blocks: {"Group1": Schema(), "Group2": Schema(), "Group3": Schema()},
       ),
     );
 
-    final keys = evaluator.$1.keys.iterator;
+    final keys = evaluator.$1.keys().iterator;
     expect(keys.moveNext(), equals(true));
     expect(keys.current, equals("VAR2"));
     expect(keys.moveNext(), equals(true));
@@ -334,6 +338,8 @@ Group2 {}
     expect(keys.current, equals("Group1"));
     expect(keys.moveNext(), equals(true));
     expect(keys.current, equals("Group2"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group3"));
     expect(keys.moveNext(), equals(false));
   });
 }

@@ -9,7 +9,7 @@ import 'package:config/src/types/duration/duration.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test("somthing", () {
+  test("something", () {
     final input = """
 VAR1 = 'value'
 VAR2 = 12
@@ -48,24 +48,29 @@ map = {
 
     expect(
       result.$1,
-      equals({
-        "VAR1": "value",
-        "VAR2": 12,
-        "NEGATIVE": -12,
-        "VAR_BOOL1": true,
-        "VAR_BOOL2": false,
-        "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
-        "table": [
-          {"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"},
-        ],
-        "table2": [
+      equals(
+        BlockData(
           {
-            "VAR4": "VAL",
-            "VAR5": [1, 7, 'value'],
+            "VAR1": "value",
+            "VAR2": 12,
+            "NEGATIVE": -12,
+            "VAR_BOOL1": true,
+            "VAR_BOOL2": false,
+            "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
+            "map": {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
           },
-        ],
-        "map": {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
-      }),
+          [
+            ("table", BlockData({"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"}, [])),
+            (
+              "table2",
+              BlockData({
+                "VAR4": "VAL",
+                "VAR5": [1, 7, 'value'],
+              }, []),
+            ),
+          ],
+        ),
+      ),
     );
   });
 
@@ -87,7 +92,7 @@ VAR3 = 12 / 12
 
     expect(
       evaluator.$1,
-      equals({"VAR1": 125.0, "VAR2": 120, "VAR3": 1}),
+      equals(BlockData({"VAR1": 125.0, "VAR2": 120, "VAR3": 1}, [])),
       reason: program.toString(),
     );
   });
@@ -109,9 +114,9 @@ VAR3 = 12 / 12
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
     expect(
       evaluator.$1,
-      equals({
+      equals(BlockData({
         "map": {"key": "val2"},
-      }),
+      }, [])),
     );
   });
 
@@ -139,29 +144,31 @@ VAR5 = 12
 Group3 {}
 Group1 {}
 Group2 {}
+Group3 {}
       """;
 
-      final lexer = Lexer(input, "/path/to/file");
-      final parser = Parser(lexer);
-      final program = parser.parseProgram();
+    final lexer = Lexer(input, "/path/to/file");
+    final parser = Parser(lexer);
+    final program = parser.parseProgram();
 
-      final evaluator = Evaluator.eval(program);
+    final evaluator = Evaluator.eval(program);
 
+    final keys = evaluator.$1.keys().iterator;
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR2"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("VAR5"));
 
-      final keys = evaluator.$1.keys.iterator;
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("VAR2"));
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("VAR"));
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("VAR5"));
-
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("Group3"));
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("Group1"));
-      expect(keys.moveNext(), equals(true));
-      expect(keys.current, equals("Group2"));
-      expect(keys.moveNext(), equals(false));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group3"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group1"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group2"));
+    expect(keys.moveNext(), equals(true));
+    expect(keys.current, equals("Group3"));
+    expect(keys.moveNext(), equals(false));
   });
 }
