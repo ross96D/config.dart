@@ -129,11 +129,52 @@ class BlockData {
   final Map<String, Object?> fields;
   final List<(String, BlockData)> blocks;
 
-  const BlockData(this.fields, this.blocks);
+  /// This is a list of all keys that where setted with defaults values
+  final Set<String> defaultKeys;
 
-  const BlockData.constEmpty() : fields = const {}, blocks = const [];
+  BlockData(this.fields, this.blocks, [Set<String>? defaultSettedKeys]) : defaultKeys = defaultSettedKeys ?? {};
 
-  factory BlockData.empty() => BlockData({}, []);
+  const BlockData.constEmpty() : fields = const {}, blocks = const [], defaultKeys = const {};
+
+  factory BlockData.empty() => BlockData({}, [], {});
+
+  BlockData merge(BlockData other) {
+    final response = BlockData.empty();
+
+    // merge fields
+    {
+      for (final field in fields.entries) {
+        if (!defaultKeys.contains(field.key)) {
+          response.fields[field.key] = field.value;
+        }
+      }
+
+      for (final field in other.fields.entries) {
+        if (!response.fields.containsKey(field.key)) {
+          response.fields[field.key] = field.value;
+        }
+      }
+    }
+
+    // merge blocks
+    {
+      for (final block in blocks) {
+        if (!defaultKeys.contains(block.$1)) {
+          response.blocks.add(block);
+        }
+      }
+
+      for (final block in other.blocks) {
+        // TODO: (Performance) this is very slow as its a search on a not sorted list inside a loop
+        // this can get out of control very quickly
+        if (!response.blockContainsKey(block.$1)) {
+          response.blocks.add(block);
+        }
+      }
+    }
+
+    return response;
+  }
 
   bool blockContainsKey(String key) {
     return blocks.any((a) => a.$1 == key);

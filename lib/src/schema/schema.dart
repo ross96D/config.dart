@@ -471,6 +471,7 @@ class BlockSchema {
           if (field.defaultTo == null && !field.nullable) {
             errors.add(RequiredKeyIsMissing(key));
           } else {
+            response.defaultKeys.add(key);
             response.fields[key] = field.defaultTo;
           }
         } else {
@@ -530,6 +531,7 @@ class BlockSchema {
 
         if (!values.value.blockContainsKey(key)) {
           if (!canBeMissingSchemas.contains(key)) {
+            response.defaultKeys.add(key);
             response.blocks.add((key, BlockData.empty()));
             schema.apply(key, response.blocks.last.$2, BlockValue.empty(), errors);
           } else {

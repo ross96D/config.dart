@@ -114,9 +114,11 @@ VAR3 = 12 / 12
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join('\n'));
     expect(
       evaluator.$1,
-      equals(BlockData({
-        "map": {"key": "val2"},
-      }, [])),
+      equals(
+        BlockData({
+          "map": {"key": "val2"},
+        }, []),
+      ),
     );
   });
 
@@ -170,5 +172,30 @@ Group3 {}
     expect(keys.moveNext(), equals(true));
     expect(keys.current, equals("Group3"));
     expect(keys.moveNext(), equals(false));
+  });
+
+  test("BlockData merge", () {
+    final defaults = BlockData(
+      {"V1": 12, "V2": 15},
+      [
+        ("B1", BlockData({"V1": 12, "V2": 15}, [], {})),
+      ],
+    );
+
+    final override = BlockData(
+      {"V1": 10, "V2": 10},
+      [
+        ("B2", BlockData({"V1": 12, "V2": 15}, [], {})),
+      ],
+      {"V2"}
+    );
+
+    expect(override.merge(defaults), BlockData(
+      {"V1": 10, "V2": 15},
+      [
+        ("B2", BlockData({"V1": 12, "V2": 15}, [], {})),
+        ("B1", BlockData({"V1": 12, "V2": 15}, [], {})),
+      ],
+    ));
   });
 }
