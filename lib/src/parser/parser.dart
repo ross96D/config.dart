@@ -216,8 +216,8 @@ class Parser {
     return true;
   }
 
-  bool _expectPeekLineEnd([TokenType? additionalLineEnd]) {
-    if (!_isLineEnd(_peekToken.type, additionalLineEnd)) {
+  bool _expectPeekLineEnd() {
+    if (!_isLineEnd(_peekToken.type)) {
       errors.add(
         ExpectedToken.withNulls(
           [TokenType.NewLine, TokenType.Eof, TokenType.Semicolon],
