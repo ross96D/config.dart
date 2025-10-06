@@ -25,7 +25,7 @@ sealed class ParseError {
     final endCol = (pos.end.lineNumber == lineNo)
         ? pos.end.offset.clamp(1, line.length + 1)
         : line.length + 1;
-    final markerLength = (endCol - startCol).clamp(1, line.length - startCol + 1);
+    final markerLength = (endCol - startCol).clamp(0, line.length - startCol + 1);
 
     final fileLocation = pos.filepath.isEmpty ? ' ' : ' ${pos.filepath}:';
     final location = ' -->$fileLocation${pos.start.lineNumber}:${pos.start.offset}';
@@ -140,9 +140,13 @@ class Parser {
   }
 
   void _moveToLineEnd() {
-    while (_currenToken.type != TokenType.NewLine && _currenToken.type != TokenType.Eof) {
+    while (!_isLineEnd(_currenToken.type)) {
       _nextToken();
     }
+  }
+
+  static bool _isLineEnd(TokenType type, [TokenType? additionalLineEnd]) {
+    return type == TokenType.NewLine || type == TokenType.Eof || type == TokenType.Semicolon || type == additionalLineEnd;
   }
 
   Line? _parseLine() {
@@ -151,7 +155,7 @@ class Parser {
         throw StateError("unreachable");
       case TokenType.Eof:
         throw StateError("unreachable");
-      case TokenType.NewLine:
+      case TokenType.NewLine || TokenType.Semicolon:
         return null;
       case TokenType.Illegal:
         errors.add(IlegalTokenFound(_currenToken, lexer.input));
@@ -212,6 +216,21 @@ class Parser {
     return true;
   }
 
+  bool _expectPeekLineEnd([TokenType? additionalLineEnd]) {
+    if (!_isLineEnd(_peekToken.type, additionalLineEnd)) {
+      errors.add(
+        ExpectedToken.withNulls(
+          [TokenType.NewLine, TokenType.Eof, TokenType.Semicolon],
+          _peekToken,
+          lexer.input,
+        ),
+      );
+      return false;
+    }
+    _nextToken();
+    return true;
+  }
+
   _Precedence _peekPrecedence() {
     return _precedences[_peekToken.type] ?? _Precedence.lowest;
   }
@@ -230,7 +249,7 @@ class Parser {
     assert(_currenToken.type == TokenType.Identifier);
     final identifier = Identifier(_currenToken.literal, _currenToken);
     // allows EmptyBlockWithOutbraces syntax
-    if (_peekToken.type == TokenType.NewLine || _peekToken.type == TokenType.Eof) {
+    if (_isLineEnd(_peekToken.type)) {
       return Block(identifier, [], identifier.token);
     }
     if (!_expectPeek(TokenType.Assign, TokenType.LeftBrace)) {
@@ -271,7 +290,7 @@ class Parser {
       return null;
     }
 
-    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
+    if (!_expectPeekLineEnd()) {
       return null;
     }
 
@@ -296,7 +315,7 @@ class Parser {
       return null;
     }
 
-    if (!_expectPeek(TokenType.NewLine, TokenType.Eof)) {
+    if (!_expectPeekLineEnd()) {
       return null;
     }
 
@@ -314,9 +333,7 @@ class Parser {
 
     Expression? leftExpr = prefix(this);
 
-    while ((_peekToken.type != TokenType.NewLine || _peekToken.type != TokenType.Eof) &&
-        precedence < _peekPrecedence()) {
-      //
+    while (!_isLineEnd(_peekToken.type) && precedence < _peekPrecedence()) {
       final infix = _infixParseFn[_peekToken.type];
       if (infix == null) {
         return leftExpr;

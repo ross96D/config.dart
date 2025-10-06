@@ -243,6 +243,61 @@ mapEmpty = {}
     }
   });
 
+  test("line end in semmicolon", () {
+    final input = """
+;;;;;
+var1 = 1;
+var2 = 2;
+""";
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          AssigmentLine(Identifier("var1"), NumberInteger(1)),
+          AssigmentLine(Identifier("var2"), NumberInteger(2)),
+        ]),
+      ),
+    );
+  });
+
+  test("Single line block", () {
+    final input = """
+var1 = 1; var2 = 2
+Group { var = 1; }
+Group2 { var1 = 1; var2 = 2; }
+""";
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          AssigmentLine(Identifier("var1"), NumberInteger(1)),
+          AssigmentLine(Identifier("var2"), NumberInteger(2)),
+          Block(Identifier("Group"), [AssigmentLine(Identifier("var"), NumberInteger(1))]),
+          Block(Identifier("Group2"), [
+            AssigmentLine(Identifier("var1"), NumberInteger(1)),
+            AssigmentLine(Identifier("var2"), NumberInteger(2)),
+          ]),
+        ]),
+      ),
+    );
+  });
+
   test("Empty named block syntax", () {
     final input = """
 GroupWithBraces {}

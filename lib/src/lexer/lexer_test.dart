@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 void main() {
   group("testing lexer", () {
     test("intitial", () {
-      final input = "[]{}=</!=,:\t-";
+      final input = "[]{}=</!=,:\t-;";
 
       final tests = [
         Token(type: TokenType.LeftBracket, literal: "["),
@@ -21,6 +21,7 @@ void main() {
         Token(type: TokenType.Comma, literal: ","),
         Token(type: TokenType.Colon, literal: ":"),
         Token(type: TokenType.Minus, literal: "-"),
+        Token(type: TokenType.Semicolon, literal: ";"),
         Token(type: TokenType.Eof, literal: ""),
       ];
       final lexer = Lexer(input);

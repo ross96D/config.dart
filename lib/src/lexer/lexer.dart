@@ -82,6 +82,7 @@ class Lexer {
       ")" => _tokenFromCurrent(TokenType.RigthParent),
       "," => _tokenFromCurrent(TokenType.Comma),
       ":" => _tokenFromCurrent(TokenType.Colon),
+      ";" => _tokenFromCurrent(TokenType.Semicolon),
       "!" => _readBang(),
       "\n" => _newLine(),
       "=" => _readEqual(),

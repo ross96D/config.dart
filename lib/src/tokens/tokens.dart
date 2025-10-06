@@ -58,6 +58,8 @@ enum TokenType {
   Comment,
   /// Symbol: `:`
   Colon,
+  /// Symbol: `;`
+  Semicolon,
 
   /// Symbol: `{`
   LeftBrace,
@@ -201,6 +203,7 @@ class Token {
       TokenType.Eof => "**EOF**",
       TokenType.NewLine => "\n",
       TokenType.Comma => ",",
+      TokenType.Semicolon => ";",
       TokenType.Dollar => "\$",
       TokenType.Assign => "=",
       TokenType.LeftBrace => "{",
