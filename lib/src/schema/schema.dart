@@ -547,6 +547,47 @@ class BlockSchema {
 
 typedef Schema = BlockSchema;
 
+class LazySchema extends BlockSchema {
+  LazySchema({
+    super.fields = const {},
+    super.validator,
+    super.ignoreNotInSchema = false,
+    super.dontRepeted = const {},
+    this.canBeMissingSchemasGetter,
+    this.blocksGetter,
+  }) : super(
+         // TODO: 2 if there was a BlockSchema interface, we wouldn't need to do this
+         blocks: const {},
+         canBeMissingSchemas: const {},
+       );
+
+  /// the function should always return the same result, because it will be cached
+  final Map<String, BlockSchema> Function()? blocksGetter;
+
+  Map<String, BlockSchema>? _blocks;
+
+  @override
+  Map<String, BlockSchema> get blocks {
+    if (blocksGetter == null) {
+      return const {};
+    }
+    _blocks ??= blocksGetter!();
+    return _blocks!;
+  }
+
+  final Set<String> Function()? canBeMissingSchemasGetter;
+  Set<String>? _canBeMissingSchemas;
+
+  @override
+  Set<String> get canBeMissingSchemas {
+    if (canBeMissingSchemasGetter == null) {
+      return const {};
+    }
+    _canBeMissingSchemas ??= canBeMissingSchemasGetter!();
+    return _canBeMissingSchemas!;
+  }
+}
+
 Object unwrapValue(Value val) {
   if (val is ListValue) {
     return val.toList();
