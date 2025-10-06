@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:config/src/ast/ast.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/tokens/tokens.dart';
@@ -90,6 +92,7 @@ class Parser {
   final Lexer lexer;
   final List<ParseError> errors = [];
   final String filepath;
+  final Queue<TokenType> _additionalLineEnds = Queue();
 
   bool _alreadyParsed = false;
 
@@ -139,17 +142,27 @@ class Parser {
     return response;
   }
 
-  void _moveToLineEnd() {
-    while (!_isLineEnd(_currenToken.type)) {
+  /// returns true if the line end was from additional line end
+  bool _moveToLineEnd() {
+    // we do not use additional line end here because the function that setted
+    // the additional line exepect the token at the end
+    while (!_isLineEnd(_currenToken.type, _additionalLineEnds.safeLast)) {
       _nextToken();
     }
+    return _currenToken.type == _additionalLineEnds.safeLast;
   }
 
   static bool _isLineEnd(TokenType type, [TokenType? additionalLineEnd]) {
-    return type == TokenType.NewLine || type == TokenType.Eof || type == TokenType.Semicolon || type == additionalLineEnd;
+    return type == TokenType.NewLine ||
+        type == TokenType.Eof ||
+        type == TokenType.Semicolon ||
+        type == additionalLineEnd;
   }
 
   Line? _parseLine() {
+    if (_currenToken.type == _additionalLineEnds.safeLast) {
+      return null;
+    }
     switch (_currenToken.type) {
       case TokenType.Comment:
         throw StateError("unreachable");
@@ -217,17 +230,21 @@ class Parser {
   }
 
   bool _expectPeekLineEnd() {
-    if (!_isLineEnd(_peekToken.type)) {
+    if (!_isLineEnd(_peekToken.type, _additionalLineEnds.safeLast)) {
       errors.add(
         ExpectedToken.withNulls(
-          [TokenType.NewLine, TokenType.Eof, TokenType.Semicolon],
+          [TokenType.NewLine, TokenType.Eof, TokenType.Semicolon, ?_additionalLineEnds.safeLast],
           _peekToken,
           lexer.input,
         ),
       );
       return false;
     }
-    _nextToken();
+    // when additional line end is set and the token is the line end we cannot call nextToken
+    // because the function that setted the additional line exepect the token at the end
+    if (_peekToken.type != _additionalLineEnds.safeLast) {
+      _nextToken();
+    }
     return true;
   }
 
@@ -249,7 +266,7 @@ class Parser {
     assert(_currenToken.type == TokenType.Identifier);
     final identifier = Identifier(_currenToken.literal, _currenToken);
     // allows EmptyBlockWithOutbraces syntax
-    if (_isLineEnd(_peekToken.type)) {
+    if (_isLineEnd(_peekToken.type, _additionalLineEnds.safeLast)) {
       return Block(identifier, [], identifier.token);
     }
     if (!_expectPeek(TokenType.Assign, TokenType.LeftBrace)) {
@@ -265,6 +282,7 @@ class Parser {
   Block _parseBlock(Identifier identifier) {
     assert(_currenToken.type == TokenType.LeftBrace);
     _nextToken();
+    _additionalLineEnds.add(TokenType.RigthBrace);
 
     List<Line> lines = [];
     while (_currenToken.type != TokenType.RigthBrace && _currenToken.type != TokenType.Eof) {
@@ -272,12 +290,16 @@ class Parser {
       if (line != null) {
         lines.add(line);
       }
-      _moveToLineEnd(); // just make sure to move to line end
-      _nextToken();
+      // just make sure to move to line end
+      if (!_moveToLineEnd()) {
+        _nextToken();
+      }
     }
     if (_currenToken.type != TokenType.RigthBrace) {
       errors.add(ExpectedToken([TokenType.RigthBrace], _currenToken, lexer.input));
     }
+    _additionalLineEnds.removeLast();
+    _nextToken();
     return Block(identifier, lines, identifier.token);
   }
 
@@ -333,7 +355,8 @@ class Parser {
 
     Expression? leftExpr = prefix(this);
 
-    while (!_isLineEnd(_peekToken.type) && precedence < _peekPrecedence()) {
+    while (!_isLineEnd(_peekToken.type, _additionalLineEnds.safeLast) &&
+        precedence < _peekPrecedence()) {
       final infix = _infixParseFn[_peekToken.type];
       if (infix == null) {
         return leftExpr;
@@ -572,3 +595,10 @@ const _precedences = {
   TokenType.Mult: _Precedence.product,
   TokenType.Div: _Precedence.product,
 };
+
+extension<T> on Queue<T> {
+  T? get safeLast {
+    if (isEmpty) return null;
+    return last;
+  }
+}

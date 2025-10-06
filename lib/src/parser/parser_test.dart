@@ -268,6 +268,56 @@ var2 = 2;
     );
   });
 
+  test("Nested blocks", () {
+    final input = """
+Group {
+  Group {
+    var = 1
+  }
+}
+""";
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          Block(Identifier("Group"), [
+            Block(Identifier("Group"), [AssigmentLine(Identifier("var"), NumberInteger(1))]),
+          ]),
+        ]),
+      ),
+    );
+  });
+
+  test("Single line block without semmicolon end", () {
+    final input = """
+Group { var = 1 }
+""";
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          Block(Identifier("Group"), [AssigmentLine(Identifier("var"), NumberInteger(1))]),
+        ]),
+      ),
+    );
+  });
+
   test("Single line block", () {
     final input = """
 var1 = 1; var2 = 2
