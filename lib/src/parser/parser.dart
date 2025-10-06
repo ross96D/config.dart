@@ -459,7 +459,7 @@ class Parser {
     }
     list.add(exp);
 
-    while (parser._peekToken.type == TokenType.Comma) {
+    while (parser._peekToken.type == TokenType.Comma || parser._peekToken.type == TokenType.NewLine) {
       // advance last token of expression
       parser._nextToken();
       // ignore all new line tokens (allow multiline statements)
@@ -515,11 +515,10 @@ class Parser {
       }
 
       // `parse` comma
-      parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline
       if (parser._peekToken.type == TokenType.RigthBrace) {
         break;
       }
-      if (!parser._expectPeek(TokenType.Comma)) {
+      if (!parser._expectPeek(TokenType.Comma, TokenType.NewLine)) {
         return response;
       }
       parser._ignoreWhilePeek(TokenType.NewLine); // allow multiline

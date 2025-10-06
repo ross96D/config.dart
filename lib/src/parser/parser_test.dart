@@ -372,4 +372,61 @@ GroupWithoutBraces
       ),
     );
   });
+
+  test("expression list with new line separators", () {
+    final input = """
+list = [
+  1
+  2
+  3
+]
+list2 = [ 1, 2, 3 ]
+map = {
+  1: 1
+  2: 2
+
+  3: 3
+}
+map2 = { 1: 1, 2: 2, 3: 3 }
+""";
+    final lexer = Lexer(input, "path/to/file");
+    final parser = Parser(lexer);
+
+    final program = parser.parseProgram();
+    final errors = parser.errors;
+
+    expect(errors.length, equals(0), reason: errors.join("\n"));
+
+    expect(
+      program,
+      equals(
+        Program("path/to/file", [
+          AssigmentLine(
+            Identifier("list"),
+            ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)]),
+          ),
+          AssigmentLine(
+            Identifier("list2"),
+            ArrayExpression([NumberInteger(1), NumberInteger(2), NumberInteger(3)]),
+          ),
+          AssigmentLine(
+            Identifier("map"),
+            MapExpression({
+              EntryExpression(NumberInteger(1), NumberInteger(1)),
+              EntryExpression(NumberInteger(2), NumberInteger(2)),
+              EntryExpression(NumberInteger(3), NumberInteger(3)),
+            }),
+          ),
+          AssigmentLine(
+            Identifier("map2"),
+            MapExpression({
+              EntryExpression(NumberInteger(1), NumberInteger(1)),
+              EntryExpression(NumberInteger(2), NumberInteger(2)),
+              EntryExpression(NumberInteger(3), NumberInteger(3)),
+            }),
+          ),
+        ]),
+      ),
+    );
+  });
 }
