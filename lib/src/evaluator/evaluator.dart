@@ -6,54 +6,21 @@ import 'package:config/src/types/duration/duration.dart';
 
 sealed class Value<T extends Object> {
   final T value;
-  final int line;
-  final String filepath;
-  const Value(this.value, this.line, this.filepath);
+  final Position position;
+  const Value(this.value, this.position);
 
   Object toValue();
 
-  Value copyWith({int? line, T? value, String? filepath}) {
+  Value copyWith({Position? position, T? value, String? filepath}) {
     return switch (this) {
-      NumberDoubleValue v => NumberDoubleValue(
-        value as double? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      NumberIntegerValue v => NumberIntegerValue(
-        value as int? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      DurationValue v => DurationValue(
-        value as Duration? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      StringValue v => StringValue(
-        value as String? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      BooleanValue v => BooleanValue(
-        value as bool? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      BlockValue v => BlockValue(
-        value as BlockValueData? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      MapValue v => MapValue(
-        value as Map<Value, Value>? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
-      ListValue v => ListValue(
-        value as List<Value>? ?? v.value,
-        line ?? this.line,
-        filepath ?? this.filepath,
-      ),
+      NumberDoubleValue v => NumberDoubleValue(value as double? ?? v.value, position ?? v.position),
+      NumberIntegerValue v => NumberIntegerValue(value as int? ?? v.value, position ?? v.position),
+      DurationValue v => DurationValue(value as Duration? ?? v.value, position ?? v.position),
+      StringValue v => StringValue(value as String? ?? v.value, position ?? v.position),
+      BooleanValue v => BooleanValue(value as bool? ?? v.value, position ?? v.position),
+      BlockValue v => BlockValue(value as BlockValueData? ?? v.value, position ?? v.position),
+      MapValue v => MapValue(value as Map<Value, Value>? ?? v.value, position ?? v.position),
+      ListValue v => ListValue(value as List<Value>? ?? v.value, position ?? v.position),
     };
   }
 
@@ -64,39 +31,39 @@ sealed class Value<T extends Object> {
 }
 
 sealed class NumberValue<T extends num> extends Value<T> {
-  const NumberValue(super.value, super.line, super.filepath);
+  const NumberValue(super.value, super.position);
 }
 
 class NumberDoubleValue extends NumberValue<double> {
-  const NumberDoubleValue(super.value, super.line, super.filepath);
+  const NumberDoubleValue(super.value, super.position);
 
   @override
   double toValue() => super.value;
 }
 
 class NumberIntegerValue extends NumberValue<int> {
-  const NumberIntegerValue(super.value, super.line, super.filepath);
+  const NumberIntegerValue(super.value, super.position);
 
   @override
   int toValue() => super.value;
 }
 
 class DurationValue extends Value<Duration> {
-  const DurationValue(super.value, super.line, super.filepath);
+  const DurationValue(super.value, super.position);
 
   @override
   Duration toValue() => super.value;
 }
 
 class StringValue extends Value<String> {
-  const StringValue(super.value, super.line, super.filepath);
+  const StringValue(super.value, super.position);
 
   @override
   String toValue() => super.value;
 }
 
 class BooleanValue extends Value<bool> {
-  const BooleanValue(super.value, super.line, super.filepath);
+  const BooleanValue(super.value, super.position);
 
   @override
   bool toValue() => super.value;
@@ -104,7 +71,7 @@ class BooleanValue extends Value<bool> {
 
 class ListValue extends Value<List<Value>> {
   // final List<Value> _values;
-  const ListValue(super.value, super.line, super.filepath);
+  const ListValue(super.value, super.position);
 
   List<Object> toList() {
     return value.map((e) => e.toValue()).toList();
@@ -115,7 +82,7 @@ class ListValue extends Value<List<Value>> {
 }
 
 class MapValue extends Value<Map<Value, Value>> {
-  const MapValue(super.value, super.line, super.filepath);
+  const MapValue(super.value, super.position);
 
   Map<Object, Object> toMap() {
     return value.map((key, value) => MapEntry(key.toValue(), value.toValue()));
@@ -126,13 +93,14 @@ class MapValue extends Value<Map<Value, Value>> {
 }
 
 class BlockData {
-  final Map<String, Object?> fields;
-  final List<(String, BlockData)> blocks;
+  final Map<Identifier, Object?> fields;
+  final List<(Identifier, BlockData)> blocks;
 
   /// This is a list of all keys that where setted with defaults values
   final Set<String> defaultKeys;
 
-  BlockData(this.fields, this.blocks, [Set<String>? defaultSettedKeys]) : defaultKeys = defaultSettedKeys ?? {};
+  BlockData(this.fields, this.blocks, [Set<String>? defaultSettedKeys])
+    : defaultKeys = defaultSettedKeys ?? {};
 
   const BlockData.constEmpty() : fields = const {}, blocks = const [], defaultKeys = const {};
 
@@ -144,7 +112,7 @@ class BlockData {
     // merge fields
     {
       for (final field in fields.entries) {
-        if (!defaultKeys.contains(field.key)) {
+        if (!defaultKeys.contains(field.key.value)) {
           response.fields[field.key] = field.value;
         }
       }
@@ -176,8 +144,12 @@ class BlockData {
     return response;
   }
 
-  bool blockContainsKey(String key) {
+  bool blockContainsKey(Identifier key) {
     return blocks.any((a) => a.$1 == key);
+  }
+
+  bool blockContainsKeyString(String key) {
+    return blocks.any((a) => a.$1.value == key);
   }
 
   BlockData? firstBlockWith(String key) {
@@ -197,7 +169,7 @@ class BlockData {
     }
   }
 
-  Iterable<String> keys() sync* {
+  Iterable<Identifier> keys() sync* {
     for (final key in fields.keys) {
       yield key;
     }
@@ -206,7 +178,7 @@ class BlockData {
     }
   }
 
-  (Map<String, Object?>, List<(String, Object)>) toData() {
+  (Map<Identifier, Object?>, List<(Identifier, Object)>) toData() {
     return (fields, blocks.map((e) => (e.$1, e.$2.toData())).toList());
   }
 
@@ -222,25 +194,25 @@ class BlockData {
 }
 
 class BlockValueData {
-  final Map<String, Value> fields;
-  final List<(String, BlockValue)> blocks;
+  final Map<Identifier, Value> fields;
+  final List<(Identifier, BlockValue)> blocks;
 
   const BlockValueData(this.fields, this.blocks);
 
   factory BlockValueData.empty() => BlockValueData({}, []);
 
-  bool containsKey(String key) {
+  bool containsKey(Identifier key) {
     if (fields.containsKey(key)) {
       return true;
     }
     return blockContainsKey(key);
   }
 
-  bool blockContainsKey(String key) {
+  bool blockContainsKey(Identifier key) {
     return blocks.any((a) => a.$1 == key);
   }
 
-  Iterable<({String key, Value value, bool isBlock})> entries() sync* {
+  Iterable<({Identifier key, Value value, bool isBlock})> entries() sync* {
     for (final key in fields.keys) {
       yield (key: key, value: fields[key]!, isBlock: false);
     }
@@ -249,7 +221,7 @@ class BlockValueData {
     }
   }
 
-  Iterable<String> keys() sync* {
+  Iterable<Identifier> keys() sync* {
     for (final key in fields.keys) {
       yield key;
     }
@@ -258,7 +230,10 @@ class BlockValueData {
     }
   }
 
-  Value? operator [](String key) {
+  Value? operator [](dynamic key) {
+    if (key is String) {
+      key = Identifier(key);
+    }
     Value? result = fields[key];
     if (result != null) {
       return result;
@@ -272,15 +247,26 @@ class BlockValueData {
     return null;
   }
 
+  Identifier? lookupKey(Identifier key) {
+    if (fields.containsKey(key)) {
+      return fields.keys.firstWhere((k) => k.value == key.value);
+    }
+    final idx = blocks.indexWhere((e) => e.$1 == key);
+    if (idx != -1) {
+      return blocks[idx].$1;
+    }
+    return null;
+  }
+
   bool get isEmpty => fields.isEmpty && blocks.isEmpty;
   bool get isNotEmpty => !isEmpty;
 }
 
 class BlockValue extends Value<BlockValueData> {
-  const BlockValue(super.value, super.line, super.filepath);
+  const BlockValue(super.value, super.position);
 
   factory BlockValue.empty([int line = -1, String filepath = ""]) =>
-      BlockValue(BlockValueData.empty(), line, filepath);
+      BlockValue(BlockValueData.empty(), Position.start(filepath));
 
   @override
   BlockData toValue() {
@@ -300,171 +286,132 @@ class BlockValue extends Value<BlockValueData> {
 sealed class EvaluationError {
   const EvaluationError();
   String error();
-}
-
-class MultipleTableNotAllowedError extends EvaluationError {
-  final String keyName;
-
-  const MultipleTableNotAllowedError(this.keyName);
 
   @override
-  String error() {
-    return "Tables with the same name detected: $keyName";
-  }
+  String toString() => error();
+
+  /// Human readable help to show to the user
+  /// so they can know what to do
+  String help();
 }
 
 class DuplicatedKeyError extends EvaluationError {
-  final int lineFirst;
-  final int lineSecond;
-  final String filepath;
+  final Position first;
+  final Position second;
   final String keyName;
 
-  const DuplicatedKeyError(this.keyName, this.lineFirst, this.lineSecond, this.filepath);
+  const DuplicatedKeyError(this.keyName, this.first, this.second);
 
   @override
   String error() {
-    return """
-Duplicated key $keyName
-first occurrence: $filepath:${lineFirst + 1}:0
-second occurrence: $filepath:${lineSecond + 1}:0
-""";
+    return "Duplicated key $keyName";
   }
 
   @override
   String toString() {
-    return "DuplicatedKeyError(keyName: $keyName, lineFirst: $lineFirst, lineSecond: $lineSecond, filepath: $filepath)";
+    return "DuplicatedKeyError(first: $first, second: $second, keyName: $keyName)";
+  }
+
+  @override
+  String help() {
+    return "Remove one of the duplicate entries for '$keyName'.";
   }
 
   @override
   bool operator ==(covariant DuplicatedKeyError other) {
-    return lineFirst == other.lineFirst &&
-        lineSecond == other.lineSecond &&
-        filepath == other.filepath &&
-        keyName == other.keyName;
+    return first == other.first && second == other.second && keyName == other.keyName;
   }
 
   @override
-  int get hashCode => Object.hashAll([keyName, lineFirst, lineSecond, filepath]);
-}
-
-@Deprecated("Define sevearl blocks with the same name is no longer invalid")
-class BlockNameDefinedAsKeyError extends EvaluationError {
-  // TODO final Position tablePosition;
-  final int keyLine;
-  final int blockLine;
-  final String filepath;
-  final String tableName;
-
-  BlockNameDefinedAsKeyError(this.tableName, this.keyLine, this.blockLine, this.filepath);
-
-  @override
-  String error() {
-    return """
-A key with the same name as the block is already defined, table $tableName could not be created
-key defined here -> $filepath:${keyLine + 1}:0
-block defined here -> $filepath:${blockLine + 1}:0
-""";
-  }
-
-  @override
-  String toString() {
-    return "BlockNameDefinedAsKeyError(tableName: $tableName, keylLine: $keyLine, blockLine: $blockLine, filepath: $filepath)";
-  }
-
-  @override
-  bool operator ==(covariant BlockNameDefinedAsKeyError other) {
-    return keyLine == other.keyLine &&
-        blockLine == other.blockLine &&
-        tableName == other.tableName &&
-        filepath == filepath;
-  }
-
-  @override
-  int get hashCode => Object.hashAll([keyLine, blockLine, tableName, filepath]);
+  int get hashCode => Object.hashAll([keyName, first, second]);
 }
 
 class KeyNotInSchemaError extends EvaluationError {
-  final int line;
-  final String filepath;
+  final Position position;
   final String keyName;
 
-  KeyNotInSchemaError(this.keyName, this.line, this.filepath);
+  KeyNotInSchemaError(this.keyName, this.position);
 
   @override
   String error() {
-    return """
-  Provided schema does not have key $keyName
-  $filepath:${line + 1}:0
-  """;
+    return "Provided schema does not have key $keyName";
   }
 
   @override
   String toString() {
-    return "KeyNotInSchemaError(line: $line, keyName: $keyName, filepath: $filepath)";
+    return "KeyNotInSchemaError($keyName $position)";
+  }
+
+  @override
+  String help() {
+    return "The key '$keyName' is not defined in the schema. "
+           "Remove this key from your data";
   }
 
   @override
   bool operator ==(covariant KeyNotInSchemaError other) {
-    return line == other.line && keyName == other.keyName && filepath == other.filepath;
+    return position == other.position && keyName == other.keyName;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, keyName, filepath]);
+  int get hashCode => Object.hashAll([position, keyName]);
 }
 
 class InfixOperationError extends EvaluationError {
-  final int line;
-  final String filepath;
+  final Position position;
   final Value left;
   final Value rigth;
   final Operator op;
 
-  const InfixOperationError(this.left, this.op, this.rigth, this.line, this.filepath);
-
-  @override
-  String toString() {
-    return error();
-  }
+  const InfixOperationError(this.left, this.op, this.rigth, this.position);
 
   @override
   String error() {
-    return "InfixOperationError $left ${left.runtimeType} $rigth ${rigth.runtimeType}\n$filepath:$line:0";
+    return "Operation not supported";
+  }
+
+  @override
+  String help() {
+    return "The operation '$op' between values of type '${left.runtimeType}' and '${rigth.runtimeType}' "
+           "is not supported. Check that both operands are of compatible types "
+           "for this operation";
   }
 }
 
 class ConflictTypeError extends EvaluationError {
-  final int line;
-  final String filepath;
+  final Position position;
   final String keyName;
   final String typeExpected;
   final String typeActual;
 
-  ConflictTypeError(this.keyName, this.line, this.filepath, this.typeExpected, this.typeActual);
+  ConflictTypeError(this.keyName, this.position, this.typeExpected, this.typeActual);
 
   @override
   String error() {
-    return """
-Type Error $keyName expected type is $typeExpected but found $typeActual
-$filepath:${line + 1}:0
-""";
+    return "Type Error $keyName expected type is $typeExpected but found $typeActual";
   }
 
   @override
   String toString() {
-    return "ConflictTypeError(keyName: $keyName, line: $line,  filepath: $filepath, expected: $typeExpected, actual: $typeActual)";
+    return "ConflictTypeError($keyName $typeExpected $typeActual $position)";
+  }
+
+  @override
+  String help() {
+    return "For key '$keyName' expected type '$typeExpected' but found '$typeActual'. "
+           "Please provide a value of the correct type.";
   }
 
   @override
   bool operator ==(covariant ConflictTypeError other) {
-    return line == other.line &&
+    return position == other.position &&
         keyName == other.keyName &&
-        filepath == other.filepath &&
         typeExpected == other.typeExpected &&
         typeActual == other.typeActual;
   }
 
   @override
-  int get hashCode => Object.hashAll([line, keyName, typeExpected, typeActual, filepath]);
+  int get hashCode => Object.hashAll([position, keyName, typeExpected, typeActual]);
 }
 
 class RequiredKeyIsMissing extends EvaluationError {
@@ -481,6 +428,12 @@ class RequiredKeyIsMissing extends EvaluationError {
   @override
   String toString() {
     return "RequiredKeyIsMissing(keyName: $keyName)";
+  }
+
+  @override
+  String help() {
+    return "The required key '$keyName' must be provided. "
+           "Please add this key with an appropriate value.";
   }
 
   @override
@@ -516,45 +469,43 @@ class _BlockEvaluator {
     final errors = <EvaluationError>[];
 
     for (final line in block.lines) {
-      switch (line) {
-        case AssigmentLine():
-          final key = line.identifer.value;
-          final value = _resolveExpr(line.expr, allDeclarations);
-          if (result.value.containsKey(key)) {
-            // TODO: reason about only using the first element
-            final lineFirst = result.value[key]!.line;
-            errors.add(DuplicatedKeyError(key, lineFirst, value.line, value.filepath));
-          }
-          result.value.fields[key] = value;
-          _ownDeclarations[key] = value;
+      try {
+        switch (line) {
+          case AssigmentLine():
+            final key = line.identifer;
+            final value = _resolveExpr(line.expr, allDeclarations);
+            if (result.value.containsKey(key)) {
+              // TODO: reason about only using the first element
+              final first = result.value.lookupKey(key)!;
+              errors.add(DuplicatedKeyError(key.value, first.token.pos!, line.identifer.token.pos!));
+            }
+            result.value.fields[key] = value;
+            _ownDeclarations[key.value] = value;
 
-        case DeclarationLine():
-          _ownDeclarations[line.identifer.value] = _resolveExpr(line.expr, allDeclarations);
+          case DeclarationLine():
+            _ownDeclarations[line.identifer.value] = _resolveExpr(line.expr, allDeclarations);
 
-        case Block():
-          final key = line.identifer.value;
-          final lineNumber = line.identifer.token.pos!.start.lineNumber;
-          final filepath = line.identifer.token.pos!.filepath;
+          case Block():
+            final key = line.identifer;
+            final position = line.identifer.token.pos!;
 
-          if (result.value.fields.containsKey(key)) {
-            final lineFirst = result.value[key]!.line;
-            errors.add(DuplicatedKeyError(key, lineFirst, lineNumber, filepath));
-            break;
-          }
+            if (result.value.fields.containsKey(key)) {
+              final lineFirst = result.value[key]!.position;
+              errors.add(DuplicatedKeyError(key.value, lineFirst, position));
+              break;
+            }
 
-          final evaluator = _BlockEvaluator(line, allDeclarations);
-          final res = evaluator.eval();
-          errors.addAll(res.errors);
-          final resVal =
-              res.result.copyWith(
-                    line: line.token.pos!.start.lineNumber,
-                    filepath: line.token.pos!.filepath,
-                  )
-                  as BlockValue;
-          result.value.blocks.add((key, resVal));
-          // using the last TableValue as the key definition in declarations
-          // there are other stuff we can do.. like merging
-          _ownDeclarations[key] = resVal;
+            final evaluator = _BlockEvaluator(line, allDeclarations);
+            final res = evaluator.eval();
+            errors.addAll(res.errors);
+            final resVal = res.result.copyWith(position: line.token.pos!) as BlockValue;
+            result.value.blocks.add((key, resVal));
+            // using the last TableValue as the key definition in declarations
+            // there are other stuff we can do.. like merging
+            _ownDeclarations[key.value] = resVal;
+        }
+      } on EvaluationError catch (e) {
+        errors.add(e);
       }
     }
 
@@ -585,27 +536,25 @@ abstract final class Evaluator {
 }
 
 Value _resolveExpr(Expression expr, Map<String, Value> declarations) {
-  final line = expr.token.pos!.start.lineNumber;
-  final filepath = expr.token.pos!.filepath;
+  final pos = expr.token.pos!;
   switch (expr) {
     case Identifier():
       // TODO fail here and handle fail upper in the chain
-      return (declarations[expr.value] ?? StringValue("", -1, "")).copyWith(
-        line: line,
-        filepath: filepath,
+      return (declarations[expr.value] ?? StringValue("", Position.start(""))).copyWith(
+        position: pos,
       );
     case NumberDouble():
-      return NumberDoubleValue(expr.value, line, filepath);
+      return NumberDoubleValue(expr.value, pos);
     case StringLiteral():
-      return StringValue(expr.value, line, filepath);
+      return StringValue(expr.value, pos);
     case InterpolableStringLiteral():
-      return StringValue(_resolveInterpolableString(expr.value, declarations), line, filepath);
+      return StringValue(_resolveInterpolableString(expr.value, declarations), pos);
     case Boolean():
-      return BooleanValue(expr.value, line, filepath);
+      return BooleanValue(expr.value, pos);
     case NumberInteger():
-      return NumberIntegerValue(expr.value, line, filepath);
+      return NumberIntegerValue(expr.value, pos);
     case DurationExpression():
-      return DurationValue(expr.value, line, filepath);
+      return DurationValue(expr.value, pos);
 
     case PrefixExpression():
       return _resolvePrefixExpr(expr, declarations);
@@ -626,7 +575,7 @@ MapValue _resolveMap(MapExpression map, Map<String, Value> declarations) {
     final value = _resolveExpr(entry.value, declarations);
     resp[key] = value;
   }
-  return MapValue(resp, map.token.pos!.start.lineNumber, map.token.pos!.filepath);
+  return MapValue(resp, map.token.pos!);
 }
 
 ListValue _resolveArray(ArrayExpression array, Map<String, Value> declarations) {
@@ -634,7 +583,7 @@ ListValue _resolveArray(ArrayExpression array, Map<String, Value> declarations) 
   for (final expr in array.list) {
     list.add(_resolveExpr(expr, declarations));
   }
-  return ListValue(list, array.token.pos!.start.lineNumber, array.token.pos!.filepath);
+  return ListValue(list, array.token.pos!);
 }
 
 Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarations) {
@@ -642,13 +591,13 @@ Value _resolvePrefixExpr(PrefixExpression prefexpr, Map<String, Value> declarati
   switch (prefexpr.op) {
     case Operator.Minus:
       return switch (rightValue) {
-        NumberDoubleValue v => NumberDoubleValue(-1 * v.value, v.line, v.filepath),
-        NumberIntegerValue v => NumberIntegerValue(-1 * v.value, v.line, v.filepath),
+        NumberDoubleValue v => NumberDoubleValue(-1 * v.value, v.position),
+        NumberIntegerValue v => NumberIntegerValue(-1 * v.value, v.position),
         _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
       };
     case Operator.Bang:
       return switch (rightValue) {
-        BooleanValue v => BooleanValue(!v.value, v.line, v.filepath),
+        BooleanValue v => BooleanValue(!v.value, v.position),
         _ => rightValue, // TODO is this an error??? could this be avoided in the parse phase?
       };
     default:
@@ -676,168 +625,96 @@ Value _infixPrefixExpr(InfixExpression expr, Map<String, Value> declarations) {
 
 Value _multiply(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Mult,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Mult, right, token.pos!);
   }
   return switch (left) {
     NumberDoubleValue() => switch (right) {
-      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
-      NumberIntegerValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
+      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.position),
+      NumberIntegerValue() => NumberDoubleValue(left.value * right.value, left.position),
     },
     NumberIntegerValue() => switch (right) {
-      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.line, left.filepath),
-      NumberIntegerValue() => NumberIntegerValue(
-        left.value * right.value,
-        left.line,
-        left.filepath,
-      ),
+      NumberDoubleValue() => NumberDoubleValue(left.value * right.value, left.position),
+      NumberIntegerValue() => NumberIntegerValue(left.value * right.value, left.position),
     },
   };
 }
 
 Value _divide(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Div,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Div, right, token.pos!);
   }
-  return NumberDoubleValue(left.value / right.value, left.line, left.filepath);
+  return NumberDoubleValue(left.value / right.value, left.position);
 }
 
 Value _add(Value left, Value right, Token token) {
   if (left is NumberValue && right is NumberValue) {
     return switch (left) {
       NumberDoubleValue() => switch (right) {
-        NumberDoubleValue() => NumberDoubleValue(
-          left.value + right.value,
-          left.line,
-          left.filepath,
-        ),
-        NumberIntegerValue() => NumberDoubleValue(
-          left.value + right.value,
-          left.line,
-          left.filepath,
-        ),
+        NumberDoubleValue() => NumberDoubleValue(left.value + right.value, left.position),
+        NumberIntegerValue() => NumberDoubleValue(left.value + right.value, left.position),
       },
       NumberIntegerValue() => switch (right) {
-        NumberDoubleValue() => NumberDoubleValue(
-          left.value + right.value,
-          left.line,
-          left.filepath,
-        ),
-        NumberIntegerValue() => NumberIntegerValue(
-          left.value + right.value,
-          left.line,
-          left.filepath,
-        ),
+        NumberDoubleValue() => NumberDoubleValue(left.value + right.value, left.position),
+        NumberIntegerValue() => NumberIntegerValue(left.value + right.value, left.position),
       },
     };
   }
   if (left is StringValue && right is StringValue) {
-    return StringValue(left.value + right.value, left.line, left.filepath);
+    return StringValue(left.value + right.value, left.position);
   }
-  throw InfixOperationError(
-    left,
-    Operator.Plus,
-    right,
-    token.pos!.start.lineNumber,
-    token.pos!.filepath,
-  );
+  throw InfixOperationError(left, Operator.Plus, right, token.pos!);
 }
 
 Value _sub(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Minus,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Minus, right, token.pos!);
   }
   return switch (left) {
     NumberDoubleValue() => switch (right) {
-      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
-      NumberIntegerValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
+      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.position),
+      NumberIntegerValue() => NumberDoubleValue(left.value - right.value, left.position),
     },
     NumberIntegerValue() => switch (right) {
-      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.line, left.filepath),
-      NumberIntegerValue() => NumberIntegerValue(
-        left.value - right.value,
-        left.line,
-        left.filepath,
-      ),
+      NumberDoubleValue() => NumberDoubleValue(left.value - right.value, left.position),
+      NumberIntegerValue() => NumberIntegerValue(left.value - right.value, left.position),
     },
   };
 }
 
 Value _eq(Value left, Value right) {
-  return BooleanValue(left.value == right.value, left.line, left.filepath);
+  return BooleanValue(left.value == right.value, left.position);
 }
 
 Value _neq(Value left, Value right) {
-  return BooleanValue(left.value != right.value, left.line, left.filepath);
+  return BooleanValue(left.value != right.value, left.position);
 }
 
 Value _gt(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Minus,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Minus, right, token.pos!);
   }
-  return BooleanValue(left.value > right.value, left.line, left.filepath);
+  return BooleanValue(left.value > right.value, left.position);
 }
 
 Value _gte(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Minus,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Minus, right, token.pos!);
   }
-  return BooleanValue(left.value >= right.value, left.line, left.filepath);
+  return BooleanValue(left.value >= right.value, left.position);
 }
 
 Value _lt(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Minus,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Minus, right, token.pos!);
   }
-  return BooleanValue(left.value < right.value, left.line, left.filepath);
+  return BooleanValue(left.value < right.value, left.position);
 }
 
 Value _lte(Value left, Value right, Token token) {
   if (left is! NumberValue || right is! NumberValue) {
-    throw InfixOperationError(
-      left,
-      Operator.Minus,
-      right,
-      token.pos!.start.lineNumber,
-      token.pos!.filepath,
-    );
+    throw InfixOperationError(left, Operator.Minus, right, token.pos!);
   }
-  return BooleanValue(left.value <= right.value, left.line, left.filepath);
+  return BooleanValue(left.value <= right.value, left.position);
 }
 
 String _resolveInterpolableString(String str, Map<String, Value> declarations) {
@@ -895,8 +772,6 @@ bool _isLetterOr_(int char) {
 
 abstract class ValidationError extends EvaluationError {
   late Value original;
-  int get line => original.line;
-  String get filepath => original.filepath;
 
   ValidationError();
 }

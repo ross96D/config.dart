@@ -1,6 +1,7 @@
 // ignore_for_file: type_literal_in_constant_pattern
 
 import 'package:config/config.dart';
+import 'package:config/src/ast/ast.dart';
 import 'package:config/src/types/duration/duration.dart';
 import 'dart:core' as core;
 import 'dart:core';
@@ -227,6 +228,11 @@ class InvalidStringToEnum extends ValidationError {
   String error() {
     return "InvalidStringToEnum";
   }
+
+  @override
+  String help() {
+    return "This string does not convert to a valid enum";
+  }
 }
 
 class EnumField<T extends Enum> extends Field<String, T> {
@@ -452,14 +458,14 @@ class BlockSchema {
     {
       for (final entry in values.value.fields.entries) {
         final key = entry.key;
-        if (!fields.containsKey(key)) {
+        if (!fields.containsKey(key.value)) {
           if (!ignoreNotInSchema) {
-            errors.add(KeyNotInSchemaError(key, entry.value.line, entry.value.filepath));
+            errors.add(KeyNotInSchemaError(key.value, entry.key.token.pos!));
           }
           response.fields[key] = entry.value.toValue();
         } else {
           // sets a default value here so i can keep insertion order from original data
-          response.fields[key] = fields[key]!.defaultTo;
+          response.fields[key] = fields[key.value]!.defaultTo;
         }
       }
 
@@ -467,22 +473,24 @@ class BlockSchema {
         final field = entry.value;
         final key = entry.key;
 
-        if (!values.value.fields.containsKey(key)) {
+        if (!values.value.fields.containsKey(Identifier(key))) {
           if (field.defaultTo == null && !field.nullable) {
             errors.add(RequiredKeyIsMissing(key));
           } else {
             response.defaultKeys.add(key);
-            response.fields[key] = field.defaultTo;
+            response.fields[Identifier(key)] = field.defaultTo;
           }
         } else {
-          final evalValue = values.value.fields[key]!;
+          final keyIdent = values.value.fields.keys.firstWhere((e) => e.value == key);
+          final evalValue = values.value.fields[keyIdent]!;
           final coerceValue = _coerceType(field._typeRec, evalValue);
           if (coerceValue == null) {
+            final start = keyIdent.token.pos!.startOffset;
+            final end = evalValue.position.startOffset + evalValue.position.length;
             errors.add(
               ConflictTypeError(
                 key,
-                evalValue.line,
-                evalValue.filepath,
+                Position.t(start, end - start, evalValue.position.filepath),
                 "${field._typeRec}",
                 "${evalValue.value.runtimeType}",
               ),
@@ -492,9 +500,9 @@ class BlockSchema {
 
           switch (field.validator(unwrapValue(coerceValue))) {
             case ValidatorSuccess<Object>():
-              response.fields[key] = coerceValue.value;
+              response.fields[Identifier(key)] = coerceValue.value;
             case ValidatorTransform result:
-              response.fields[key] = result.value;
+              response.fields[Identifier(key)] = result.value;
             case ValidatorError result:
               result.value.original = coerceValue;
               errors.add(result.value);
@@ -507,21 +515,21 @@ class BlockSchema {
     {
       for (final block in values.value.blocks) {
         final key = block.$1;
-        final schema = blocks[key];
+        final schema = blocks[key.value];
         if (schema == null) {
           if (!ignoreNotInSchema) {
-            errors.add(KeyNotInSchemaError(key, block.$2.line, block.$2.filepath));
+            errors.add(KeyNotInSchemaError(key.value, block.$2.position));
           }
           response.blocks.add((key, block.$2.toValue()));
           continue;
         }
         // sets a default value here so i can keep insertion order from original data
-        if (dontRepeted.contains(key) && response.blockContainsKey(key)) {
-          errors.add(RepeatedBlockError(key));
+        if (dontRepeted.contains(key.value) && response.blockContainsKey(key)) {
+          errors.add(RepeatedBlockError(key.value));
           continue;
         }
         response.blocks.add((key, BlockData.empty()));
-        schema.apply(key, response.blocks.last.$2, block.$2, errors);
+        schema.apply(key.value, response.blocks.last.$2, block.$2, errors);
       }
 
       /// Add blocks that cannot be missing
@@ -529,10 +537,10 @@ class BlockSchema {
         final schema = entry.value;
         final key = entry.key;
 
-        if (!values.value.blockContainsKey(key)) {
+        if (!values.value.blockContainsKey(Identifier(key))) {
           if (!canBeMissingSchemas.contains(key)) {
             response.defaultKeys.add(key);
-            response.blocks.add((key, BlockData.empty()));
+            response.blocks.add((Identifier(key), BlockData.empty()));
             schema.apply(key, response.blocks.last.$2, BlockValue.empty(), errors);
           } else {
             continue;
@@ -603,11 +611,7 @@ Value? _coerceType(_TypeRec expected, Value actual) {
     return actual;
   }
   if (expected.innerType == double && actual.runtimeType == NumberIntegerValue) {
-    return NumberDoubleValue(
-      (actual as NumberIntegerValue).value.toDouble(),
-      actual.line,
-      actual.filepath,
-    );
+    return NumberDoubleValue((actual as NumberIntegerValue).value.toDouble(), actual.position);
   }
 
   // Coerce type when list
@@ -630,7 +634,7 @@ ListValue? _coerceList(_List expected, ListValue actual) {
   if (expected.inner is _Any) {
     return actual;
   }
-  final resp = ListValue([], actual.line, actual.filepath);
+  final resp = ListValue([], actual.position);
   for (final val in actual.value) {
     final newval = _coerceType(expected.inner, val);
     if (newval == null) {
@@ -645,7 +649,7 @@ MapValue? _coerceMap(_Map expected, MapValue actual) {
   if (expected.key is _Any && expected.value is _Any) {
     return actual;
   }
-  final resp = MapValue({}, actual.line, actual.filepath);
+  final resp = MapValue({}, actual.position);
   for (final entry in actual.value.entries) {
     final key = _coerceType(expected.key, entry.key);
     if (key == null) {
@@ -667,6 +671,11 @@ class RepeatedBlockError extends CustomEvaluationError {
 
   @override
   String error() {
-    return "Table with name $key is repeated but was not allowed";
+    return "Block with name $key is repeated but was not allowed";
+  }
+
+  @override
+  String help() {
+    return "Remove or change the name of the block";
   }
 }

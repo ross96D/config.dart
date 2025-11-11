@@ -5,6 +5,8 @@ import 'dart:core';
 import 'package:config/src/evaluator/evaluator.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/parser/parser.dart';
+import 'package:config/src/ast/ast.dart';
+import 'package:config/src/tokens/tokens.dart';
 import 'package:config/src/types/duration/duration.dart';
 import 'package:test/test.dart';
 
@@ -51,21 +53,29 @@ map = {
       equals(
         BlockData(
           {
-            "VAR1": "value",
-            "VAR2": 12,
-            "NEGATIVE": -12,
-            "VAR_BOOL1": true,
-            "VAR_BOOL2": false,
-            "DURATION": Duration.fromDartDuration(core.Duration(hours: 12, seconds: 26)),
-            "map": {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
+            Identifier("VAR1"): "value",
+            Identifier("VAR2"): 12,
+            Identifier("NEGATIVE"): -12,
+            Identifier("VAR_BOOL1"): true,
+            Identifier("VAR_BOOL2"): false,
+            Identifier("DURATION"): Duration.fromDartDuration(
+              core.Duration(hours: 12, seconds: 26),
+            ),
+            Identifier("map"): {12: 31, "Key": "Value", true: 0, 1: false, Duration(12000): false},
           },
           [
-            ("table", BlockData({"VAR4": "SOMETHINGS", "VAR5": "SOMETHINGS-value"}, [])),
             (
-              "table2",
+              Identifier("table"),
               BlockData({
-                "VAR4": "VAL",
-                "VAR5": [1, 7, 'value'],
+                Identifier("VAR4"): "SOMETHINGS",
+                Identifier("VAR5"): "SOMETHINGS-value",
+              }, []),
+            ),
+            (
+              Identifier("table2"),
+              BlockData({
+                Identifier("VAR4"): "VAL",
+                Identifier("VAR5"): [1, 7, 'value'],
               }, []),
             ),
           ],
@@ -92,7 +102,9 @@ VAR3 = 12 / 12
 
     expect(
       evaluator.$1,
-      equals(BlockData({"VAR1": 125.0, "VAR2": 120, "VAR3": 1}, [])),
+      equals(
+        BlockData({Identifier("VAR1"): 125.0, Identifier("VAR2"): 120, Identifier("VAR3"): 1}, []),
+      ),
       reason: program.toString(),
     );
   });
@@ -116,7 +128,7 @@ VAR3 = 12 / 12
       evaluator.$1,
       equals(
         BlockData({
-          "map": {"key": "val2"},
+          Identifier("map"): {"key": "val2"},
         }, []),
       ),
     );
@@ -135,7 +147,16 @@ VAR = 12
 
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<DuplicatedKeyError>());
-    expect(evaluator.$2[0], equals(DuplicatedKeyError("VAR", 0, 1, "/path/to/file")));
+    expect(
+      evaluator.$2[0],
+      equals(
+        DuplicatedKeyError(
+          "VAR",
+          Position.t(0, 3, "/path/to/file"),
+          Position.t(9, 3, "/path/to/file"),
+        ),
+      ),
+    );
   });
 
   test("keep insertion order", () {
@@ -157,45 +178,48 @@ Group3 {}
 
     final keys = evaluator.$1.keys().iterator;
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR2"));
+    expect(keys.current, equals(Identifier("VAR2")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR"));
+    expect(keys.current, equals(Identifier("VAR")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR5"));
+    expect(keys.current, equals(Identifier("VAR5")));
 
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group3"));
+    expect(keys.current, equals(Identifier("Group3")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group1"));
+    expect(keys.current, equals(Identifier("Group1")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group2"));
+    expect(keys.current, equals(Identifier("Group2")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group3"));
+    expect(keys.current, equals(Identifier("Group3")));
     expect(keys.moveNext(), equals(false));
   });
 
   test("BlockData merge", () {
     final defaults = BlockData(
-      {"V1": 12, "V2": 15},
+      {Identifier("V1"): 12, Identifier("V2"): 15},
       [
-        ("B1", BlockData({"V1": 12, "V2": 15}, [], {})),
+        (Identifier("B1"), BlockData({Identifier("V1"): 12, Identifier("V2"): 15}, [], {})),
       ],
     );
 
     final override = BlockData(
-      {"V1": 10, "V2": 10},
+      {Identifier("V1"): 10, Identifier("V2"): 10},
       [
-        ("B2", BlockData({"V1": 12, "V2": 15}, [], {})),
+        (Identifier("B2"), BlockData({Identifier("V1"): 12, Identifier("V2"): 15}, [], {})),
       ],
-      {"V2"}
+      {"V2"},
     );
 
-    expect(override.merge(defaults), BlockData(
-      {"V1": 10, "V2": 15},
-      [
-        ("B2", BlockData({"V1": 12, "V2": 15}, [], {})),
-        ("B1", BlockData({"V1": 12, "V2": 15}, [], {})),
-      ],
-    ));
+    expect(
+      override.merge(defaults),
+      BlockData(
+        {Identifier("V1"): 10, Identifier("V2"): 15},
+        [
+          (Identifier("B2"), BlockData({Identifier("V1"): 12, Identifier("V2"): 15}, [], {})),
+          (Identifier("B1"), BlockData({Identifier("V1"): 12, Identifier("V2"): 15}, [], {})),
+        ],
+      ),
+    );
   });
 }

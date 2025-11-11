@@ -54,33 +54,33 @@ VAR1=VAR
 VAR2=4h23s
 """;
       final tests = [
-        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(0, 0, 0, 3)),
-        Token(type: TokenType.Assign, literal: "=", pos: Position.t(0, 4, 0, 5)),
-        Token(type: TokenType.Integer, literal: "2", pos: Position.t(0, 6, 0, 7)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(0, 7, 1, 0)),
+        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(0, 3)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(4, 1)),
+        Token(type: TokenType.Integer, literal: "2", pos: Position.t(6, 1)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(7, 1)),
 
-        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(1, 0, 1, 3)),
-        Token(type: TokenType.Assign, literal: "=", pos: Position.t(1, 4, 1, 5)),
-        Token(type: TokenType.Double, literal: "3.0", pos: Position.t(1, 6, 1, 9)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(1, 9, 2, 0)),
+        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(8, 3)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(12, 1)),
+        Token(type: TokenType.Double, literal: "3.0", pos: Position.t(14, 3)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(17, 1)),
 
-        Token(type: TokenType.Identifier, literal: "VAR1", pos: Position.t(2, 0, 2, 4)),
-        Token(type: TokenType.Assign, literal: "=", pos: Position.t(2, 4, 2, 5)),
-        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(2, 5, 2, 8)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(2, 8, 3, 0)),
+        Token(type: TokenType.Identifier, literal: "VAR1", pos: Position.t(18, 4)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(22, 1)),
+        Token(type: TokenType.Identifier, literal: "VAR", pos: Position.t(23, 3)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(26, 1)),
 
-        Token(type: TokenType.LeftBracket, literal: "[", pos: Position.t(3, 0, 3, 1)),
-        Token(type: TokenType.Identifier, literal: "table", pos: Position.t(3, 1, 3, 6)),
-        Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(3, 6, 3, 7)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(3, 7, 4, 0)),
+        Token(type: TokenType.LeftBracket, literal: "[", pos: Position.t(27, 1)),
+        Token(type: TokenType.Identifier, literal: "table", pos: Position.t(28, 5)),
+        Token(type: TokenType.RigthBracket, literal: "]", pos: Position.t(33, 1)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(34, 1)),
 
 
-        Token(type: TokenType.Identifier, literal: "VAR2", pos: Position.t(4, 0, 4, 4)),
-        Token(type: TokenType.Assign, literal: "=", pos: Position.t(4, 4, 4, 5)),
-        Token(type: TokenType.Duration, literal: "4h23s", pos: Position.t(4, 5, 4, 10)),
-        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(4, 10, 5, 0)),
+        Token(type: TokenType.Identifier, literal: "VAR2", pos: Position.t(35, 4)),
+        Token(type: TokenType.Assign, literal: "=", pos: Position.t(39, 1)),
+        Token(type: TokenType.Duration, literal: "4h23s", pos: Position.t(40, 5)),
+        Token(type: TokenType.NewLine, literal: "\n", pos: Position.t(45, 1)),
 
-        Token(type: TokenType.Eof, literal: "", pos: Position.t(5, 0)),
+        Token(type: TokenType.Eof, literal: "", pos: Position.t(46, 0)),
       ];
       final lexer = Lexer(input);
       for (final expectedToken in tests) {

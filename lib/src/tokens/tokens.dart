@@ -56,21 +56,28 @@ enum TokenType {
   NewLine,
   Comma,
   Comment,
+
   /// Symbol: `:`
   Colon,
+
   /// Symbol: `;`
   Semicolon,
 
   /// Symbol: `{`
   LeftBrace,
+
   /// Symbol: `}`
   RigthBrace,
+
   /// Symbol: `[`
   LeftBracket,
+
   /// Symbol: `]`
   RigthBracket,
+
   /// Symbol: `(`
   LeftParent,
+
   /// Symbol: `)`
   RigthParent,
 
@@ -126,43 +133,33 @@ class Cursor {
 
 class Position {
   final String filepath;
-  final Cursor start;
-  final Cursor end;
+  final int startOffset;
+  final int length;
 
-  Position({required this.start, required this.end, required this.filepath});
+  Position({required this.startOffset, required this.length, required this.filepath}) : assert(length >= 0);
 
-  factory Position.start(String filepath) => Position(
-    start: Cursor(lineNumber: 0, offset: 0),
-    end: Cursor(lineNumber: 0, offset: 0),
-    filepath: filepath,
-  );
+  factory Position.start(String filepath) =>
+      Position(startOffset: 0, length: 0, filepath: filepath);
 
-  factory Position.t(
-    int startLineNumber,
-    int startOffset, [
-    int? endLineNumber,
-    int? endOffset,
-    String filepath = "",
-  ]) {
+  factory Position.t(int startOffset, [int length = 0, String filepath = ""]) {
     return Position(
-      start: Cursor(lineNumber: startLineNumber, offset: startOffset),
-      end: Cursor(lineNumber: endLineNumber ?? startLineNumber, offset: endOffset ?? startOffset),
+      startOffset: startOffset,
+      length: length,
       filepath: filepath,
     );
   }
 
   @override
-  String toString() {
-    return "$filepath $start - $end";
-  }
-
-  @override
   bool operator ==(covariant Position other) {
-    return filepath == other.filepath && start == other.start && end == other.end;
+    return filepath == other.filepath && startOffset == other.startOffset && length == other.length;
   }
 
   @override
-  int get hashCode => Object.hashAll([filepath, start, end]);
+  int get hashCode => Object.hashAll([filepath, startOffset, length]);
+
+  String toString(){
+    return "Position($filepath $startOffset $length)";
+  }
 }
 
 class Token {

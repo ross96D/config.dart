@@ -15,9 +15,6 @@ class Lexer {
     return _readPosition < input.length ? input.codeUnitAt(_readPosition) : 0;
   }
 
-  int _lineNumber = 0;
-  int _lineStartPosition = 0;
-
   Lexer(this.input, [this.filepath = ""]) {
     _readChar();
   }
@@ -30,18 +27,10 @@ class Lexer {
     }
     _position = _readPosition;
     _readPosition += 1;
-
-    if (_isPreviousNewLine()) {
-      _lineNumber += 1;
-      _lineStartPosition = _position;
-    }
   }
 
-  Cursor _currentCursor([int offset = 0]) =>
-      Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition + offset);
-
-  Position _getPostion(int offset) {
-    return Position(start: _currentCursor(), end: _currentCursor(offset), filepath: filepath);
+  Position _getPostion(int length) {
+    return Position(startOffset: _position, length: length, filepath: filepath);
   }
 
   Token _tokenFromCurrent(TokenType type) {
@@ -58,11 +47,7 @@ class Lexer {
       final resp = Token(
         type: TokenType.Eof,
         literal: "",
-        pos: Position(
-          start: Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition),
-          end: Cursor(lineNumber: _lineNumber, offset: _position - _lineStartPosition),
-          filepath: filepath,
-        ),
+        pos: Position(startOffset: _position, length: 0, filepath: filepath),
       );
       _readChar();
       return resp;
@@ -100,11 +85,7 @@ class Lexer {
     final resp = Token(
       type: TokenType.NewLine,
       literal: "\n",
-      pos: Position(
-        start: _currentCursor(),
-        end: Cursor(lineNumber: _lineNumber + 1, offset: 0),
-        filepath: filepath,
-      ),
+      pos: Position(startOffset: _position, length: 1, filepath: filepath),
     );
     _readChar();
     return resp;
@@ -167,18 +148,22 @@ class Lexer {
   Token _readComment() {
     assert(String.fromCharCode(char) == "#");
 
-    final startCursor = _currentCursor();
+    final startPosition = _position;
     final start = _position;
     while (!_isNewLineOrEOF()) {
       _readChar();
     }
     final end = _position;
-    final endCursor = _currentCursor();
+    final endPosition = _position;
 
     return Token(
       type: TokenType.Comment,
       literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
+      pos: Position(
+        startOffset: startPosition,
+        length: endPosition - startPosition,
+        filepath: filepath,
+      ),
     );
   }
 
@@ -192,7 +177,7 @@ class Lexer {
       ),
     };
 
-    final startCursor = _currentCursor();
+    final startCursor = _position;
 
     _readChar();
     final start = _position;
@@ -202,12 +187,12 @@ class Lexer {
     final end = _position;
     _readChar(); // consume readUntil char
 
-    final endCursor = _currentCursor();
+    final endCursor = _position;
 
     return Token(
       type: type,
       literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
+      pos: Position(startOffset: startCursor, length: endCursor - startCursor, filepath: filepath),
     );
   }
 
@@ -219,14 +204,6 @@ class Lexer {
       >= 97 && <= 122 => _readIdentifier(),
       _ => _illegal(),
     };
-  }
-
-  bool _isPreviousNewLine() {
-    if (_position != 0 && _position <= input.length) {
-      return input.codeUnitAt(_position - 1) == 10;
-    } else {
-      return false;
-    }
   }
 
   bool _isNewLineOrEOF() {
@@ -247,22 +224,26 @@ class Lexer {
       final lengthDuration = Duration.lexerString(input.substring(_position));
       if (lengthDuration != null) {
         final start = _position;
-        final startCursor = _currentCursor();
+        final startCursor = _position;
         for (int i = 0; i < lengthDuration; i++) {
           _readChar();
         }
-        final endCursor = _currentCursor();
+        final endCursor = _position;
         return Token(
           literal: input.substring(start, _position),
           type: TokenType.Duration,
-          pos: Position(start: startCursor, end: endCursor, filepath: filepath),
+          pos: Position(
+            startOffset: startCursor,
+            length: endCursor - startCursor,
+            filepath: filepath,
+          ),
         );
       }
     }
 
     var type = TokenType.Integer;
 
-    final startCursor = _currentCursor();
+    final startCursor = _position;
     final start = _position;
     bool seePoint = false;
     while (_isDigit() || (char == 46 && !seePoint)) {
@@ -272,28 +253,31 @@ class Lexer {
       }
       _readChar();
     }
-    final endCursor = _currentCursor();
-    final end = _position;
+    final endCursor = _position;
     return Token(
       type: type,
-      literal: input.substring(start, end),
-      pos: Position(start: startCursor, end: endCursor, filepath: filepath),
+      literal: input.substring(start, _position),
+      pos: Position(startOffset: startCursor, length: endCursor - startCursor, filepath: filepath),
     );
   }
 
   Token _readIdentifier() {
     assert(_isLetterOr_(), "identifier must start with a letter or a _");
 
-    final startCursor = _currentCursor();
+    final startCursor = _position;
     final start = _position;
     while (_isLetterOr_() || _isDigit()) {
       _readChar();
     }
-    final endCursor = _currentCursor();
+    final endCursor = _position;
     final end = _position;
 
     final literal = input.substring(start, end);
-    final position = Position(start: startCursor, end: endCursor, filepath: filepath);
+    final position = Position(
+      startOffset: startCursor,
+      length: endCursor - startCursor,
+      filepath: filepath,
+    );
     Token? token = checkIfKeyword(literal, position);
     token ??= Token(type: TokenType.Identifier, literal: literal, pos: position);
     return token;

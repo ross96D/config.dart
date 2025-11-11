@@ -10,46 +10,18 @@ sealed class ParseError {
   final String input;
   const ParseError(this.token, this.input);
 
-  String _diagnosticHelper() {
-    if (token.pos == null) {
-      return "";
-    }
-
-    final pos = token.pos!;
-    final lines = input.split('\n');
-    final lineNo = pos.start.lineNumber;
-    if (lineNo < 0 || lineNo > lines.length) {
-      return "";
-    }
-
-    final line = lines[lineNo];
-    final startCol = pos.start.offset;
-    final endCol = (pos.end.lineNumber == lineNo)
-        ? pos.end.offset.clamp(1, line.length + 1)
-        : line.length + 1;
-    final markerLength = (endCol - startCol).clamp(0, line.length - startCol + 1);
-
-    final fileLocation = pos.filepath.isEmpty ? ' ' : ' ${pos.filepath}:';
-    final location = ' -->$fileLocation${pos.start.lineNumber}:${pos.start.offset}';
-    final codeLine = '$lineNo | $line';
-    final marker =
-        '${' ' * (lineNo.toString().length)} | ${' ' * (startCol - 1)}${'^' * markerLength}';
-
-    return '$location\n$codeLine\n$marker';
-  }
-
-  String _display();
+  String error();
 
   @override
-  String toString() => "error: ${_display()}\n${_diagnosticHelper()}";
+  String toString() => error();
 }
 
 class IlegalTokenFound extends ParseError {
   const IlegalTokenFound(super.token, super.input);
 
   @override
-  String _display() {
-    return "Found illegal token at ${token.pos}";
+  String error() {
+    return "Found illegal token";
   }
 }
 
@@ -57,8 +29,8 @@ class BadTokenAtLineStart extends ParseError {
   const BadTokenAtLineStart(super.token, super.input);
 
   @override
-  String _display() {
-    return "Bad token at line start $token";
+  String error() {
+    return "Bad token at line start";
   }
 }
 
@@ -83,7 +55,7 @@ class ExpectedToken extends ParseError {
   }
 
   @override
-  String _display() {
+  String error() {
     return "Expected token ${expected.join(" or ")} found ${token.type}";
   }
 }

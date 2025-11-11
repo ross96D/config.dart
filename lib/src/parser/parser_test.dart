@@ -135,8 +135,8 @@ mapEmpty = {}
     expect(
       program.lines[3].token.pos,
       Position(
-        start: Cursor(lineNumber: 3, offset: 0),
-        end: Cursor(lineNumber: 3, offset: 5),
+        startOffset: 32,
+        length: 5,
         filepath: "path/to/file",
       ),
       reason: "${program.lines[3]}",

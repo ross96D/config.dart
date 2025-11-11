@@ -132,6 +132,14 @@ class Identifier extends _GenericExpression<String> {
   String toString() {
     return value;
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is Identifier && value == other.value;
+  }
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class Boolean extends _GenericExpression<bool> {
@@ -333,7 +341,7 @@ class Program {
   }
 
   Block toBlock() {
-    final token = Token(type: TokenType.Identifier, literal: "", pos: Position.t(0, 0, 0, 0, ""));
+    final token = Token(type: TokenType.Identifier, literal: "", pos: Position.t(0));
     return Block(Identifier("", token), lines, token);
   }
 

@@ -2,6 +2,7 @@
 import 'package:config/config.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:test/test.dart';
+import 'package:config/src/ast/ast.dart';
 
 void main() {
   test("test coerce int to double", () {
@@ -12,7 +13,7 @@ void main() {
     final schema = Schema(fields: {"VAR2": DoubleNumberField()});
     final evaluator = Evaluator.eval(program, schema: schema);
     expect(evaluator.$2.length, equals(0), reason: evaluator.$2.join("\n"));
-    expect(evaluator.$1, equals(BlockData({"VAR2": 2.0}, [])));
+    expect(evaluator.$1, equals(BlockData({Identifier("VAR2"): 2.0}, [])));
   });
 
   test("schema success", () {
@@ -67,14 +68,14 @@ Map = {
       equals(
         BlockData(
           {
-            "VAR1": "value",
-            "VAR2": 2.0,
-            "VAR3": null,
-            "Array": ['1', '3', '5', '[1, 3]'],
-            "Map": {12: true, true: "some", "key": "value"},
+            Identifier("VAR1"): "value",
+            Identifier("VAR2"): 2.0,
+            Identifier("VAR3"): null,
+            Identifier("Array"): ['1', '3', '5', '[1, 3]'],
+            Identifier("Map"): {12: true, true: "some", "key": "value"},
           },
           [
-            ("Group", BlockData({"VAR2": 2.0}, [])),
+            (Identifier("Group"), BlockData({Identifier("VAR2"): 2.0}, [])),
           ],
         ),
       ),
@@ -113,7 +114,7 @@ Map = {
     final schema = Schema(fields: {"VAR1": StringField(defaultTo: "VALUE")});
     final evaluator = Evaluator.eval(program, schema: schema);
 
-    expect(evaluator.$1, equals(BlockData({"VAR1": "VALUE"}, [])));
+    expect(evaluator.$1, equals(BlockData({Identifier("VAR1"): "VALUE"}, [])));
   });
 
   test("schema require value", () {
@@ -141,8 +142,8 @@ Map = {
 
     expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<KeyNotInSchemaError>());
-    expect(evaluator.$2[0], equals(KeyNotInSchemaError("VAR", 0, "/path/to/file")));
-    expect(evaluator.$1, equals(BlockData({"VAR": 12}, [])));
+    expect(evaluator.$2[0], equals(KeyNotInSchemaError("VAR", Position.t(0, 3, "/path/to/file"))));
+    expect(evaluator.$1, equals(BlockData({Identifier("VAR"): 12}, [])));
   });
 
   test("type conflict", () {
@@ -156,7 +157,10 @@ Map = {
 
     expect(evaluator.$2.length, greaterThanOrEqualTo(1), reason: evaluator.$2.join('\n'));
     expect(evaluator.$2[0], isA<ConflictTypeError>());
-    expect(evaluator.$2[0], equals(ConflictTypeError("VAR", 0, "/path/to/file", "String", "int")));
+    expect(
+      evaluator.$2[0],
+      equals(ConflictTypeError("VAR", Position.t(0, 8, "/path/to/file"), "String", "int")),
+    );
   });
 
   test("missing required key", () {
@@ -192,7 +196,7 @@ VAR = ["12", "zome", "item"]
       evaluator.$1,
       equals(
         BlockData({
-          "VAR": ["12", "zome", "item"],
+          Identifier("VAR"): ["12", "zome", "item"],
         }, []),
       ),
     );
@@ -219,7 +223,7 @@ Map = {
       evaluator.$1,
       equals(
         BlockData({
-          "Map": {"Something": SchemaTestEnum.val1, "Something3": SchemaTestEnum.val2},
+          Identifier("Map"): {"Something": SchemaTestEnum.val1, "Something3": SchemaTestEnum.val2},
         }, []),
       ),
     );
@@ -279,16 +283,16 @@ Group3 {
       evaluator.$1,
       equals(
         BlockData({}, [
-          ("Group1", BlockData({"Var1": "val1", "Var2": "val2"}, [])),
-          ("Group2", BlockData({"Var1": "val1", "Var2": "val2"}, [])),
+          (Identifier("Group1"), BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, [])),
+          (Identifier("Group2"), BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, [])),
           (
-            "Group3",
+            Identifier("Group3"),
             BlockData(
-              {"Var1": "val1", "Var2": "val2"},
+              {Identifier("Var1"): "val1", Identifier("Var2"): "val2"},
               [
-                ("GroupeNested", BlockData({"Var1": "val1"}, [])),
-                ("GroupeNested", BlockData({"Var1": "val1"}, [])),
-                ("GroupeNested2", BlockData({"k1": "v1"}, [])),
+                (Identifier("GroupeNested"), BlockData({Identifier("Var1"): "val1"}, [])),
+                (Identifier("GroupeNested"), BlockData({Identifier("Var1"): "val1"}, [])),
+                (Identifier("GroupeNested2"), BlockData({Identifier("k1"): "v1"}, [])),
               ],
             ),
           ),
@@ -326,20 +330,20 @@ Group3 {}
 
     final keys = evaluator.$1.keys().iterator;
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR2"));
+    expect(keys.current, equals(Identifier("VAR2")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR"));
+    expect(keys.current, equals(Identifier("VAR")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("VAR5"));
+    expect(keys.current, equals(Identifier("VAR5")));
 
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group3"));
+    expect(keys.current, equals(Identifier("Group3")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group1"));
+    expect(keys.current, equals(Identifier("Group1")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group2"));
+    expect(keys.current, equals(Identifier("Group2")));
     expect(keys.moveNext(), equals(true));
-    expect(keys.current, equals("Group3"));
+    expect(keys.current, equals(Identifier("Group3")));
     expect(keys.moveNext(), equals(false));
   });
 }
@@ -351,4 +355,7 @@ class NotEqualValidationError extends ValidationError {
   String error() {
     return "NotEqualValidationError";
   }
+
+  @override
+  String help() => "";
 }

@@ -4,6 +4,7 @@ import 'package:config/src/evaluator/evaluator.dart';
 import 'package:config/src/lexer/lexer.dart';
 import 'package:config/src/parser/parser.dart';
 import 'package:config/src/schema/schema.dart';
+import 'package:config/src/tokens/tokens.dart';
 
 sealed class EvaluationResult {}
 
@@ -70,7 +71,7 @@ class ConfigurationParser {
       program,
       schema: schema,
       declarations: predefinedDeclarations.map(
-        (key, value) => MapEntry(key, StringValue(value, -1, "")),
+        (key, value) => MapEntry(key, StringValue(value, Position.t(0))),
       ),
     );
     if (result.$2.isNotEmpty) {
