@@ -154,7 +154,7 @@ class BlockData {
 
   BlockData? firstBlockWith(String key) {
     for (final block in blocks) {
-      if (block.$1 == key) {
+      if (block.$1.value == key) {
         return block.$2;
       }
     }
