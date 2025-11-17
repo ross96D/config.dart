@@ -345,7 +345,7 @@ class KeyNotInSchemaError extends EvaluationError {
   @override
   String help() {
     return "The key '$keyName' is not defined in the schema. "
-           "Remove this key from your data";
+           "Remove this key";
   }
 
   @override
