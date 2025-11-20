@@ -18,7 +18,11 @@ sealed class Value<T extends Object> {
       DurationValue v => DurationValue(value as Duration? ?? v.value, position ?? v.position),
       StringValue v => StringValue(value as String? ?? v.value, position ?? v.position),
       BooleanValue v => BooleanValue(value as bool? ?? v.value, position ?? v.position),
-      BlockValue v => BlockValue(value as BlockValueData? ?? v.value, position ?? v.position),
+      BlockValue v => BlockValue(
+        value as BlockValueData? ?? v.value,
+        position ?? v.position,
+        v.name,
+      ),
       MapValue v => MapValue(value as Map<Value, Value>? ?? v.value, position ?? v.position),
       ListValue v => ListValue(value as List<Value>? ?? v.value, position ?? v.position),
     };
@@ -263,10 +267,11 @@ class BlockValueData {
 }
 
 class BlockValue extends Value<BlockValueData> {
-  const BlockValue(super.value, super.position);
+  final Identifier? name;
+  const BlockValue(super.value, super.position, this.name);
 
-  factory BlockValue.empty([int line = -1, String filepath = ""]) =>
-      BlockValue(BlockValueData.empty(), Position.start(filepath));
+  factory BlockValue.empty(Identifier? name, [int line = -1, String filepath = ""]) =>
+      BlockValue(BlockValueData.empty(), Position.start(filepath), name);
 
   @override
   BlockData toValue() {
@@ -345,7 +350,7 @@ class KeyNotInSchemaError extends EvaluationError {
   @override
   String help() {
     return "The key '$keyName' is not defined in the schema. "
-           "Remove this key";
+        "Remove this key";
   }
 
   @override
@@ -373,8 +378,8 @@ class InfixOperationError extends EvaluationError {
   @override
   String help() {
     return "The operation '$op' between values of type '${left.runtimeType}' and '${rigth.runtimeType}' "
-           "is not supported. Check that both operands are of compatible types "
-           "for this operation";
+        "is not supported. Check that both operands are of compatible types "
+        "for this operation";
   }
 }
 
@@ -399,7 +404,7 @@ class ConflictTypeError extends EvaluationError {
   @override
   String help() {
     return "For key '$keyName' expected type '$typeExpected' but found '$typeActual'. "
-           "Please provide a value of the correct type.";
+        "Please provide a value of the correct type.";
   }
 
   @override
@@ -416,29 +421,32 @@ class ConflictTypeError extends EvaluationError {
 
 class RequiredKeyIsMissing extends EvaluationError {
   final String keyName;
-  // TODO final List<String> scope;
+  final String? blockName;
+  final Position? blockPosition;
 
-  RequiredKeyIsMissing(this.keyName);
+  RequiredKeyIsMissing(this.keyName, this.blockName, this.blockPosition);
 
   @override
   String error() {
-    return "Required key $keyName is missing";
+    return "Required key $keyName is missing in block $blockName";
   }
 
   @override
   String toString() {
-    return "RequiredKeyIsMissing(keyName: $keyName)";
+    return "RequiredKeyIsMissing(keyName: $keyName, blockName: $blockName, blockPosition: $blockPosition)";
   }
 
   @override
   String help() {
     return "The required key '$keyName' must be provided. "
-           "Please add this key with an appropriate value.";
+        "Please add this key with an appropriate value.";
   }
 
   @override
   bool operator ==(covariant RequiredKeyIsMissing other) {
-    return keyName == other.keyName;
+    return keyName == other.keyName &&
+        blockName == other.blockName &&
+        blockPosition == other.blockPosition;
   }
 
   @override
@@ -464,8 +472,8 @@ class _BlockEvaluator {
     : _parentDeclarations = declarations ?? {},
       _ownDeclarations = {};
 
-  _BlockEvaluation eval() {
-    final result = BlockValue.empty();
+  _BlockEvaluation eval([Identifier? name]) {
+    final result = BlockValue.empty(name);
     final errors = <EvaluationError>[];
 
     for (final line in block.lines) {
@@ -477,7 +485,9 @@ class _BlockEvaluator {
             if (result.value.containsKey(key)) {
               // TODO: reason about only using the first element
               final first = result.value.lookupKey(key)!;
-              errors.add(DuplicatedKeyError(key.value, first.token.pos!, line.identifer.token.pos!));
+              errors.add(
+                DuplicatedKeyError(key.value, first.token.pos!, line.identifer.token.pos!),
+              );
             }
             result.value.fields[key] = value;
             _ownDeclarations[key.value] = value;
@@ -496,7 +506,7 @@ class _BlockEvaluator {
             }
 
             final evaluator = _BlockEvaluator(line, allDeclarations);
-            final res = evaluator.eval();
+            final res = evaluator.eval(key);
             errors.addAll(res.errors);
             final resVal = res.result.copyWith(position: line.token.pos!) as BlockValue;
             result.value.blocks.add((key, resVal));

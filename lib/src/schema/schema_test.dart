@@ -164,17 +164,41 @@ Map = {
   });
 
   test("missing required key", () {
-    final input = "";
+    {
+      final input = "";
 
-    final lexer = Lexer(input, "/path/to/file");
-    final parser = Parser(lexer);
-    final program = parser.parseProgram();
+      final lexer = Lexer(input, "/path/to/file");
+      final parser = Parser(lexer);
+      final program = parser.parseProgram();
 
-    final evaluator = Evaluator.eval(program, schema: Schema(fields: {"VAR": StringField()}));
+      final evaluator = Evaluator.eval(program, schema: Schema(fields: {"VAR": StringField()}));
 
-    expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
-    expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
-    expect(evaluator.$2[0], equals(RequiredKeyIsMissing("VAR")));
+      expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+      expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
+      expect(evaluator.$2[0], equals(RequiredKeyIsMissing("VAR", null, null)));
+    }
+    {
+      final input = """
+Block {}
+""";
+
+      final lexer = Lexer(input, "/path/to/file");
+      final parser = Parser(lexer);
+      final program = parser.parseProgram();
+
+      final evaluator = Evaluator.eval(
+        program,
+        schema: Schema(
+          blocks: {
+            "Block": BlockSchema(fields: {"VAR": StringField()}),
+          },
+        ),
+      );
+
+      expect(evaluator.$2.length, equals(1), reason: evaluator.$2.join('\n'));
+      expect(evaluator.$2[0], isA<RequiredKeyIsMissing>());
+      expect(evaluator.$2[0], equals(RequiredKeyIsMissing("VAR", "Block", Position.t(0, 5, "/path/to/file"))));
+    }
   });
 
   test("fix list conflict type", () {
@@ -283,8 +307,14 @@ Group3 {
       evaluator.$1,
       equals(
         BlockData({}, [
-          (Identifier("Group1"), BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, [])),
-          (Identifier("Group2"), BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, [])),
+          (
+            Identifier("Group1"),
+            BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, []),
+          ),
+          (
+            Identifier("Group2"),
+            BlockData({Identifier("Var1"): "val1", Identifier("Var2"): "val2"}, []),
+          ),
           (
             Identifier("Group3"),
             BlockData(
