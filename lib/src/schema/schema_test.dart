@@ -35,15 +35,15 @@ Map = {
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    ValidatorResult<String> validator(String v) {
+    ValidatorResult<String> validator(String v, Position position) {
       return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
     }
 
-    ValidatorResult<List<String>> transformList(List<Object> v) {
+    ValidatorResult<List<String>> transformList(List<Object> v, Position position) {
       return ValidatorTransform(v.map((e) => e.toString()).toList());
     }
 
-    ValidatorResult<Map<Object, Object>> transformMap(Map<Object, Object> v) {
+    ValidatorResult<Map<Object, Object>> transformMap(Map<Object, Object> v, Position position) {
       return ValidatorTransform(v);
     }
 
@@ -91,7 +91,7 @@ Map = {
     final parser = Parser(lexer);
     final program = parser.parseProgram();
 
-    ValidatorResult<String> validator(String v) {
+    ValidatorResult<String> validator(String v, Position position) {
       return v != 'value' ? ValidatorError(NotEqualValidationError()) : ValidatorTransform(v);
     }
 
@@ -381,6 +381,9 @@ Group3 {}
 enum SchemaTestEnum { val1, val2, val3, val4, val5 }
 
 class NotEqualValidationError extends ValidationError {
+  @override
+  List<Position> get positions => [];
+
   @override
   String error() {
     return "NotEqualValidationError";

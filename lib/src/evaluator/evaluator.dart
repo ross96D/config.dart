@@ -781,7 +781,7 @@ bool _isLetterOr_(int char) {
 }
 
 abstract class ValidationError extends EvaluationError {
-  late Value original;
+  List<Position> get positions;
 
   ValidationError();
 }

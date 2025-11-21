@@ -6,7 +6,8 @@ import 'package:config/src/types/duration/duration.dart';
 import 'dart:core' as core;
 import 'dart:core';
 
-typedef MapperFn<Rec extends Object, Res extends Object> = ValidatorResult<Res> Function(Rec value);
+typedef ValidatorFn<Rec extends Object, Res extends Object> =
+    ValidatorResult<Res> Function(Rec value, Position position);
 
 sealed class _TypeRec {
   const _TypeRec();
@@ -112,7 +113,33 @@ sealed class Field<Rec extends Object, Res extends Object> {
 
   _TypeRec get _typeRec;
 
-  ValidatorResult<Res> validator(Rec value);
+  ValidatorResult<Res> validator(Value value);
+}
+
+/// You can extends this to validate fields that can have different kind of types, like unions
+class UntypedField<Res extends Object> extends Field<Object, Res> {
+  @override
+  final _TypeRec _typeRec = const _Any();
+
+  @override
+  final Res? defaultTo;
+
+  @override
+  final bool nullable;
+
+  final ValidatorResult<Res> Function(Value)? _validator;
+
+  const UntypedField({
+    this.nullable = false,
+    this.defaultTo,
+    ValidatorResult<Res> Function(Value)? validator,
+  }) : _validator = validator;
+
+  @override
+  ValidatorResult<Res> validator(Value value) {
+    if (_validator == null) return ValidatorSuccess();
+    return _validator(value);
+  }
 }
 
 abstract class _SimpleField<Rec extends Object, Res extends Object> extends Field<Rec, Res> {
@@ -122,9 +149,9 @@ abstract class _SimpleField<Rec extends Object, Res extends Object> extends Fiel
   @override
   final bool nullable;
 
-  final MapperFn<Rec, Res>? _validator;
+  final ValidatorFn<Rec, Res>? _validator;
 
-  const _SimpleField({this.defaultTo, this.nullable = false, MapperFn<Rec, Res>? validator})
+  const _SimpleField({this.defaultTo, this.nullable = false, ValidatorFn<Rec, Res>? validator})
     : assert(
         Rec == Res || validator != null,
         'If the Res object type is different than the Rec type, a validator must be provided',
@@ -132,9 +159,9 @@ abstract class _SimpleField<Rec extends Object, Res extends Object> extends Fiel
       _validator = validator;
 
   @override
-  ValidatorResult<Res> validator(Rec value) {
+  ValidatorResult<Res> validator(Value value) {
     if (_validator == null) return ValidatorSuccess();
-    return _validator(value);
+    return _validator(unwrapValue(value) as Rec, value.position);
   }
 }
 
@@ -170,7 +197,7 @@ class DurationFieldBase<Res extends Object> extends _SimpleField<Duration, Res> 
 class DurationField extends DurationFieldBase<core.Duration> {
   const DurationField({super.defaultTo, super.nullable, super.validator = _transform});
 
-  static ValidatorResult<core.Duration> _transform(Duration dur) {
+  static ValidatorResult<core.Duration> _transform(Duration dur, Position? position) {
     return ValidatorTransform(dur.toDartDuration());
   }
 }
@@ -224,6 +251,13 @@ class BooleanFieldBase<Res extends Object> extends _SimpleField<bool, Res> {
 typedef BooleanField = BooleanFieldBase<bool>;
 
 class InvalidStringToEnum extends ValidationError {
+  final Position position;
+
+  @override
+  List<Position> get positions => [position];
+
+  InvalidStringToEnum(this.position);
+
   @override
   String error() {
     return "InvalidStringToEnum";
@@ -250,18 +284,18 @@ class EnumField<T extends Enum> extends Field<String, T> {
   _TypeRec get _typeRec => const _String();
 
   @override
-  ValidatorResult<T> validator(String value) {
-    final transformResult = _transform(value);
+  ValidatorResult<T> validator(Value value) {
+    final transformResult = _transform(unwrapValue(value) as String, value.position);
     return transformResult;
   }
 
-  ValidatorResult<T> _transform(String v) {
+  ValidatorResult<T> _transform(String v, Position position) {
     for (final e in values) {
       if (v == e.name) {
         return ValidatorTransform<T>(e);
       }
     }
-    return ValidatorError(InvalidStringToEnum());
+    return ValidatorError(InvalidStringToEnum(position));
   }
 }
 
@@ -274,23 +308,25 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
   @override
   final bool nullable;
 
-  final MapperFn<List<Res>, List<Res>>? _validator;
+  final ValidatorFn<List<Res>, List<Res>>? _validator;
 
   const ListField(
     this.singleField, {
     this.defaultTo,
     this.nullable = false,
-    MapperFn<List<Res>, List<Res>>? validator,
+    ValidatorFn<List<Res>, List<Res>>? validator,
   }) : _validator = validator;
 
   @override
   _TypeRec get _typeRec => _List(_TypeRec.fromType(Rec));
 
   @override
-  ValidatorResult<List<Res>> validator(List<Object> originalList) {
+  ValidatorResult<List<Res>> validator(covariant ListValue value) {
+    final originalList = value.toList();
+
     final transformedList = <Res>[];
-    for (final originalItem in originalList) {
-      final itemValidatorResult = singleField.validator(originalItem as Rec);
+    for (final (i, originalItem) in originalList.indexed) {
+      final itemValidatorResult = singleField.validator(value.value[i]);
       // TODO: 2 how should inner field options (.nullable ; .defaultTo) be applied, if at all?
       switch (itemValidatorResult) {
         case ValidatorSuccess():
@@ -303,7 +339,7 @@ class ListField<Rec extends Object, Res extends Object> extends Field<List<Rec>,
       }
     }
     if (_validator != null) {
-      final customValidatorResult = _validator(transformedList);
+      final customValidatorResult = _validator(transformedList, value.position);
       if (customValidatorResult is! ValidatorSuccess) {
         return customValidatorResult;
       }
@@ -323,32 +359,32 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
   @override
   final bool nullable;
 
-  final MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? _validator;
+  final ValidatorFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? _validator;
 
   const MapField(
     this.keyField,
     this.valField, {
     this.defaultTo,
     this.nullable = false,
-    MapperFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? validator,
+    ValidatorFn<Map<ResKey, ResVal>, Map<ResKey, ResVal>>? validator,
   }) : _validator = validator;
 
   @override
   _TypeRec get _typeRec => _Map(_TypeRec.fromType(Key), _TypeRec.fromType(Val));
 
   @override
-  ValidatorResult<Map<ResKey, ResVal>> validator(Map<Object, Object> originalMap) {
+  ValidatorResult<Map<ResKey, ResVal>> validator(covariant MapValue value) {
     final transformedMap = <ResKey, ResVal>{};
 
-    for (final originalItem in originalMap.entries) {
-      final originalKey = originalItem.key;
-      final originalVal = originalItem.value;
-      final keyValidatorResult = keyField.validator(originalKey as Key);
+    for (final originalValue in value.value.entries) {
+      final originalKey = originalValue.key;
+      final originalVal = originalValue.value;
+      final keyValidatorResult = keyField.validator(originalKey);
 
       ResKey key;
       switch (keyValidatorResult) {
         case ValidatorSuccess<ResKey> _:
-          key = originalKey as ResKey;
+          key = originalKey.toValue() as ResKey;
         case ValidatorTransform<ResKey> transformResult:
           key = transformResult.value;
         case ValidatorError<ValidationError, core.Object> transformError:
@@ -356,7 +392,7 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
           return ValidatorError(transformError.value);
       }
 
-      final valValidatorResult = valField.validator(originalVal as Val);
+      final valValidatorResult = valField.validator(originalVal);
       ResVal val;
       switch (valValidatorResult) {
         case ValidatorSuccess<ResVal> _:
@@ -371,7 +407,7 @@ class MapField<Key extends Object, Val extends Object, ResKey extends Object, Re
       transformedMap[key] = val;
     }
     if (_validator != null) {
-      final customValidatorResult = _validator(transformedMap);
+      final customValidatorResult = _validator(transformedMap, value.position);
       if (customValidatorResult is! ValidatorSuccess) {
         return customValidatorResult;
       }
@@ -389,7 +425,7 @@ class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
   @override
   final bool nullable;
 
-  final MapperFn<List<Object>, List<T>> tranformFn;
+  final ValidatorFn<List<Object>, List<T>> tranformFn;
 
   const UntypedListField(this.tranformFn, {this.defaultTo, this.nullable = false});
 
@@ -397,7 +433,9 @@ class UntypedListField<T extends Object> extends Field<List<Object>, List<T>> {
   _TypeRec get _typeRec => const _List(_Any());
 
   @override
-  ValidatorResult<List<T>> validator(List<Object> value) => tranformFn(value);
+  ValidatorResult<List<T>> validator(covariant ListValue value)  {
+    return tranformFn(value.toList(), value.position);
+  }
 }
 
 class UntypedMapField<K extends Object, V extends Object>
@@ -408,7 +446,7 @@ class UntypedMapField<K extends Object, V extends Object>
   @override
   final bool nullable;
 
-  final MapperFn<Map<Object, Object>, Map<K, V>> tranformFn;
+  final ValidatorFn<Map<Object, Object>, Map<K, V>> tranformFn;
 
   const UntypedMapField(this.tranformFn, {this.defaultTo, this.nullable = false});
 
@@ -416,7 +454,9 @@ class UntypedMapField<K extends Object, V extends Object>
   _TypeRec get _typeRec => const _Map(_Any(), _Any());
 
   @override
-  ValidatorResult<Map<K, V>> validator(Map<Object, Object> value) => tranformFn(value);
+  ValidatorResult<Map<K, V>> validator(covariant MapValue value) {
+    return tranformFn(value.toMap(), value.position);
+  }
 }
 
 class BlockSchema {
@@ -498,13 +538,12 @@ class BlockSchema {
             continue;
           }
 
-          switch (field.validator(unwrapValue(coerceValue))) {
+          switch (field.validator(coerceValue)) {
             case ValidatorSuccess<Object>():
-              response.fields[Identifier(key)] = coerceValue.value;
+              response.fields[Identifier(key)] = coerceValue.toValue();
             case ValidatorTransform result:
               response.fields[Identifier(key)] = result.value;
             case ValidatorError result:
-              result.value.original = coerceValue;
               errors.add(result.value);
           }
         }
@@ -607,7 +646,7 @@ Object unwrapValue(Value val) {
 }
 
 Value? _coerceType(_TypeRec expected, Value actual) {
-  if (expected.innerType == actual.value.runtimeType) {
+  if (expected.innerType == actual.value.runtimeType || expected.innerType == Object) {
     return actual;
   }
   if (expected.innerType == double && actual.runtimeType == NumberIntegerValue) {
